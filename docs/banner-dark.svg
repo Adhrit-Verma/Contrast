@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-label="Contrast — an accessibility audit agent that measures, judges and verifies">
+  <defs>
+    <style>
+      .display { font-family: "Tiempos Headline", "Iowan Old Style", Palatino, Georgia, serif; }
+      .ui { font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .mono { font-family: "JetBrains Mono", ui-monospace, Consolas, monospace; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="320" fill="#181715"/>
+  <rect width="1200" height="6" fill="#cc785c"/>
+
+  <rect x="72" y="86" width="44" height="44" rx="11" fill="#cc785c"/>
+  <text x="94" y="117" class="display" font-size="26" fill="#141413" text-anchor="middle">C</text>
+  <text x="132" y="120" class="display" font-size="46" fill="#faf9f5">Contrast</text>
+  <text x="74" y="164" class="mono" font-size="15" fill="#a09d96">accessibility audit agent · measures, judges, verifies</text>
+
+  <text x="74" y="212" class="ui" font-size="16" fill="#d6d3cc">Crawls authenticated apps read-only. Finds what machines can prove,</text>
+  <text x="74" y="238" class="ui" font-size="16" fill="#d6d3cc">asks a model about what they can’t, then <tspan font-weight="600" fill="#faf9f5">re-tests every fix it writes.</tspan></text>
+
+  <g transform="translate(700 74)">
+    <rect x="0" y="0" width="200" height="80" rx="12" fill="#1f1e1b" stroke="#302e2a"/>
+    <text x="20" y="36" class="ui" font-size="17" fill="#55524d">Book a ticket</text>
+    <text x="20" y="62" class="mono" font-size="12" fill="#ff9d92">2.4:1  fails 1.4.3</text>
+
+    <rect x="228" y="0" width="200" height="80" rx="12" fill="#1f1e1b" stroke="#302e2a"/>
+    <text x="248" y="36" class="ui" font-size="17" fill="#faf9f5">Book a ticket</text>
+    <text x="248" y="62" class="mono" font-size="12" fill="#6cc48b">7.0:1  passes AA</text>
+
+    <path d="M209 40 h10 m-4 -4 l4 4 -4 4" stroke="#cc785c" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <g transform="translate(0 108)">
+      <rect width="428" height="1" fill="#302e2a"/>
+      <text x="0" y="28" class="mono" font-size="12" fill="#a09d96">MEASURED</text>
+      <rect x="86" y="18" width="120" height="12" rx="6" fill="#d6d3cc"/>
+      <text x="0" y="52" class="mono" font-size="12" fill="#e09277">ASSESSED</text>
+      <rect x="86" y="42" width="58" height="12" rx="6" fill="#cc785c"/>
+      <text x="222" y="28" class="ui" font-size="12" fill="#a09d96">certain — tool output</text>
+      <text x="222" y="52" class="ui" font-size="12" fill="#a09d96">judged — needs an auditor</text>
+    </g>
+  </g>
+</svg>

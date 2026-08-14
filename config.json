@@ -1,0 +1,157 @@
+{
+  "browser": {
+    "headless": false,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navTimeoutMs": 30000,
+    "args": [
+      "--window-size=1460,1000"
+    ]
+  },
+  "session": {
+    "dir": "sessions"
+  },
+  "db": {
+    "path": "runs/audit.sqlite"
+  },
+  "scan": {
+    "lighthouse": false,
+    "a11yTree": true,
+    "a11yTreeInterestingOnly": true,
+    "keyboard": true,
+    "maxTabs": 40,
+    "screenshots": true,
+    "maxElementShots": 60,
+    "maxImageShots": 12,
+    "axeTimeoutMs": 60000,
+    "inventory": true,
+    "inventoryLimits": {
+      "images": 40,
+      "links": 120,
+      "headings": 60,
+      "fields": 60,
+      "blocks": 80
+    },
+    "lighthouseOptions": {
+      "formFactor": "desktop",
+      "timeoutMs": 75000
+    },
+    "keyboardTimeoutMs": 20000,
+    "enrichBudgetMs": 45000
+  },
+  "ai": {
+    "enabled": true,
+    "tier": "free",
+    "model": "gemini-3.6-flash",
+    "embedModel": "gemini-embedding-001",
+    "rpm": 15,
+    "burst": 1,
+    "dailyCap": 1000,
+    "maxRetries": 5,
+    "maxRepairs": 2,
+    "temperature": 0.2,
+    "knowledgeDir": "knowledge",
+    "tasks": {
+      "alt-text-quality": true,
+      "link-text-quality": true,
+      "heading-semantics": true,
+      "form-quality": true,
+      "reading-order": true
+    },
+    "capabilities": {
+      "json": true,
+      "vision": true,
+      "embeddings": true
+    }
+  },
+  "ui": {
+    "headlessJobs": true,
+    "stallSeconds": 180
+  },
+  "graph": {
+    "maxFixAttempts": 3,
+    "interruptOnLogin": true,
+    "interruptOnEscalation": false,
+    "checkpointPath": "runs/checkpoints.sqlite",
+    "recursionLimit": 2000,
+    "grouping": {
+      "depth": 2,
+      "maxPerGroup": 12
+    }
+  },
+  "crawl": {
+    "maxDepth": 3,
+    "maxPages": 50,
+    "settleMs": 500,
+    "concurrency": 2,
+    "respectRobots": true,
+    "seedFromSitemap": false,
+    "userAgent": "a11y-audit-agent",
+    "allowlist": [],
+    "denylist": [
+      "/logout",
+      "/log-out",
+      "/signout",
+      "/sign-out",
+      "/logoff",
+      "/delete",
+      "/remove",
+      "/destroy",
+      "/unsubscribe",
+      "/reset-password"
+    ],
+    "skipExtensions": [
+      ".pdf",
+      ".zip",
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".svg",
+      ".webp",
+      ".mp4",
+      ".mp3",
+      ".css",
+      ".js",
+      ".ico",
+      ".woff",
+      ".woff2",
+      ".ttf"
+    ],
+    "pageTimeoutMs": 120000
+  },
+  "groups": {
+    "wai-demos": {
+      "label": "WAI demo sites",
+      "clients": [
+        "demo",
+        "demo-after"
+      ]
+    }
+  },
+  "clients": {
+    "demo": {
+      "label": "BAD demo — before",
+      "seedUrl": "https://www.w3.org/WAI/demos/bad/before/home.html",
+      "requiresLogin": false,
+      "loggedOutPattern": "(/login|/signin|/sign-in|/auth)",
+      "crawl": {
+        "maxPages": 3,
+        "maxDepth": 1
+      },
+      "pinned": true
+    },
+    "demo-after": {
+      "label": "BAD demo — after",
+      "seedUrl": "https://www.w3.org/WAI/demos/bad/after/home.html",
+      "requiresLogin": false,
+      "loggedOutPattern": "(/login|/signin|/sign-in|/auth)",
+      "crawl": {
+        "maxPages": 3,
+        "maxDepth": 1
+      }
+    }
+  }
+}

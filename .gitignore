@@ -1,0 +1,11 @@
+node_modules/
+sessions/
+runs/
+*.sqlite
+.env
+config.json.bak
+config.json.tmp
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -1,0 +1,23 @@
+{
+  "name": "a11y-audit-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "a11y": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "audit:ui": "node scripts/audit-ui.mjs",
+    "ui": "node src/cli.js ui"
+  },
+  "dependencies": {
+    "@axe-core/puppeteer": "^4.13.0",
+    "@google/generative-ai": "^0.24.1",
+    "@langchain/core": "^1.2.5",
+    "@langchain/langgraph": "^1.4.9",
+    "@langchain/langgraph-checkpoint-sqlite": "^1.0.3",
+    "axe-core": "^4.13.0",
+    "lighthouse": "^13.4.1",
+    "puppeteer": "^24.10.0"
+  }
+}

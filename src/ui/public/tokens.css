@@ -1,0 +1,128 @@
+/* Contrast — design tokens. See DESIGN.md for the reasoning and the measured
+   contrast ratios. Nothing outside this file may hardcode a colour. */
+
+:root {
+  /* --------------------------------------------------------- palette */
+  --canvas: #faf9f5;
+  --surface: #ffffff;
+  --surface-2: #f5f0e8;
+  --surface-3: #efe9de;
+  --line: #e6dfd8;
+  --line-strong: #d5cec2;
+
+  --text: #141413;
+  --text-2: #3d3d3a;
+  --text-3: #6c6a64;          /* 5.3:1 on canvas */
+
+  --accent: #cc785c;          /* fills and rails only */
+  /* Coral that carries words. Must clear 4.5:1 on BOTH canvas (5.1:1) and the
+     tinted sidebar surface (4.75:1) — #a9583e passed on canvas but failed at
+     4.42:1 on --surface-2, which our own scanner caught. */
+  --accent-text: #a25439;
+  --accent-soft: #f7ece6;
+  --on-accent: #141413;       /* ink on coral = 5.7:1; white would be 3.3:1 */
+
+  /* Green must clear 4.5:1 on its own tint, not just on white: #2f7d4f was
+     4.38:1 against --ok-soft. Measured, not guessed. */
+  --ok: #2a7346;
+  --ok-soft: #e6f2ea;
+  --warn: #8a6100;
+  --info: #1f5f8b;
+
+  /* severity: tinted badge + foreground that clears 4.5:1 on that tint */
+  --sev-critical-bg: #fdecea; --sev-critical-fg: #9b1c14;
+  --sev-serious-bg:  #fbeee0; --sev-serious-fg:  #8a4200;
+  --sev-moderate-bg: #f8f1d8; --sev-moderate-fg: #6b5300;
+  --sev-minor-bg:    #f0efec; --sev-minor-fg:    #4a4a4a;
+
+  --det: #3d3d3a;             /* measured  */
+  --ai: var(--accent);        /* assessed  */
+
+  --shadow-1: 0 1px 2px rgba(20, 20, 19, .06);
+  --shadow-2: 0 8px 24px rgba(20, 20, 19, .10);
+  --ring: 0 0 0 2px var(--canvas), 0 0 0 4px var(--accent);
+
+  /* ------------------------------------------------------ typography */
+  --font-display: "Tiempos Headline", "Iowan Old Style", Palatino, Georgia, serif;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 15px;
+  --fs-title: 18px; --fs-display-sm: 22px; --fs-display: 28px;
+
+  /* ---------------------------------------------------------- layout */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --r-1: 4px; --r-2: 6px; --r-3: 8px; --r-4: 12px; --r-pill: 999px;
+  --sidebar: 256px;
+  --dock: 460px;
+  --topbar: 56px;
+
+  /* ---------------------------------------------------------- motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-1: 120ms;   /* under the cursor */
+  --t-2: 200ms;   /* entering or leaving */
+  --t-3: 420ms;   /* explaining itself */
+}
+
+/* Dark is authored, not inverted: warm-dark surfaces, never blue-black. */
+:root[data-theme="dark"] {
+  --canvas: #181715;
+  --surface: #1f1e1b;
+  --surface-2: #252320;
+  --surface-3: #2b2925;
+  --line: #302e2a;
+  --line-strong: #413e39;
+
+  --text: #faf9f5;
+  --text-2: #d6d3cc;
+  --text-3: #a09d96;          /* 6.2:1 on surface */
+
+  --accent: #cc785c;
+  --accent-text: #e09277;     /* 6.4:1 on surface */
+  --accent-soft: #2e211c;
+  --on-accent: #141413;
+
+  --ok: #6cc48b;
+  --ok-soft: #1c2a21;
+  --warn: #e0c05a;
+  --info: #7ab8dd;
+
+  --sev-critical-bg: #331b19; --sev-critical-fg: #ff9d92;
+  --sev-serious-bg:  #2e2119; --sev-serious-fg:  #f2a866;
+  --sev-moderate-bg: #2a2618; --sev-moderate-fg: #e0c05a;
+  --sev-minor-bg:    #26251f; --sev-minor-fg:    #bab7b0;
+
+  --det: #d6d3cc;
+  --ai: var(--accent-text);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, .5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #181715; --surface: #1f1e1b; --surface-2: #252320; --surface-3: #2b2925;
+    --line: #302e2a; --line-strong: #413e39;
+    --text: #faf9f5; --text-2: #d6d3cc; --text-3: #a09d96;
+    --accent-text: #e09277; --accent-soft: #2e211c;
+    --ok: #6cc48b; --ok-soft: #1c2a21; --warn: #e0c05a; --info: #7ab8dd;
+    --sev-critical-bg: #331b19; --sev-critical-fg: #ff9d92;
+    --sev-serious-bg: #2e2119; --sev-serious-fg: #f2a866;
+    --sev-moderate-bg: #2a2618; --sev-moderate-fg: #e0c05a;
+    --sev-minor-bg: #26251f; --sev-minor-fg: #bab7b0;
+    --det: #d6d3cc;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-2: 0 10px 30px rgba(0, 0, 0, .5);
+  }
+}
+
+/* Motion may explain, never announce — and never against the user's wishes. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-1: .001ms; --t-2: .001ms; --t-3: .001ms; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

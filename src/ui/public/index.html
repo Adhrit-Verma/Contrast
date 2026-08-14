@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contrast — accessibility audit</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23cc785c'/><path d='M8 3a5 5 0 000 10z' fill='%23141413'/></svg>">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to main content</a>
+
+<div class="app">
+
+  <!-- =============================================== sidebar: versions -->
+  <nav class="sidebar" aria-label="Clients and runs">
+    <!-- The mark is the loader. Idle it is a static C; running it sweeps; with a
+         known page budget it fills. Motion that reports progress, not decoration. -->
+    <div class="brand">
+      <span class="mark" id="brand-mark" data-state="idle">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle class="track" cx="12" cy="12" r="9"/>
+          <circle class="arc" cx="12" cy="12" r="9"/>
+        </svg>
+      </span>
+      <b>Contrast</b>
+      <span class="sr-only" id="brand-status" role="status" aria-live="polite"></span>
+    </div>
+    <div class="sidebar-new">
+      <button class="btn primary new-audit" id="new-audit">+ New audit</button>
+    </div>
+    <div class="sidebar-scroll">
+      <p class="side-label">
+        <span>Projects</span>
+        <button class="link-btn" id="new-project" title="Create a project">+ Project</button>
+      </p>
+      <div id="tree" aria-busy="true">
+        <div class="skeleton" style="height:34px;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:34px"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================================================== main: content -->
+  <div class="main">
+    <header class="topbar">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span id="crumb-client" class="dim">no client</span>
+        <span class="sep" aria-hidden="true">/</span>
+        <span id="crumb-run" class="now dim">no run selected</span>
+      </nav>
+      <div class="spacer"></div>
+      <button id="palette-btn" class="btn sm" aria-haspopup="dialog">Search <span class="kbd">⌘K</span></button>
+      <button id="theme" class="btn sm" aria-label="Switch colour theme">Theme</button>
+      <span class="status-dot" id="dot" aria-hidden="true"></span>
+      <span class="dim" id="conn" style="font-size:var(--fs-sm)">idle</span>
+    </header>
+
+    <!-- tablist and panel both live inside <main>: role="tabpanel" on <main>
+         itself would strip the landmark and orphan the tabs. -->
+    <main id="main">
+      <!-- No "New audit" tab: the composer is a mode, reached only from the
+           "+ New audit" button. These tabs all belong to one open audit. -->
+      <div class="tabs" role="tablist" aria-label="Views" id="tabs">
+        <button class="tab" role="tab" id="tab-overview" aria-selected="true" aria-controls="content">Overview</button>
+        <button class="tab" role="tab" id="tab-findings" aria-selected="false" aria-controls="content">Findings</button>
+        <button class="tab" role="tab" id="tab-history" aria-selected="false" aria-controls="content">History</button>
+        <button class="tab" role="tab" id="tab-compare" aria-selected="false" aria-controls="content">Compare</button>
+        <button class="tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="content">Settings</button>
+      </div>
+      <div class="content" id="content" role="tabpanel" tabindex="-1" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <!-- ============================================= live browser dock -->
+  <aside class="dock" id="dock" hidden aria-label="Live browser">
+    <div class="dock-head">
+      <span class="status-dot busy" aria-hidden="true"></span>
+      <b>Browser</b>
+      <span class="dock-url mono dim" id="dock-url"></span>
+      <button class="btn sm" id="dock-close" aria-label="Hide the browser panel">Hide</button>
+    </div>
+    <div class="dock-body">
+      <img id="screen" alt="Live view of the page the audit is looking at" tabindex="0">
+      <p class="dock-idle dim" id="dock-idle">Waiting for the browser…</p>
+    </div>
+    <p class="dock-foot dim" id="dock-foot">Click and type here to drive the page.</p>
+  </aside>
+</div>
+
+<!-- ================================================ login interrupt -->
+<div class="modal-back" id="login-modal" hidden>
+  <div class="modal card" role="alertdialog" aria-modal="true" aria-labelledby="lm-title" aria-describedby="lm-body">
+    <h2 id="lm-title">This site needs you to sign in</h2>
+    <p id="lm-body">
+      The audit is <b>paused</b> at <span class="mono" id="lm-url"></span>.
+      Sign in using the browser panel on the right — or the window that just opened — then press
+      Continue. Nothing is scanned until you do, and your credentials are never stored.
+    </p>
+    <p class="dim" id="lm-why"></p>
+    <div class="row">
+      <button class="btn primary" id="lm-continue">I have signed in — continue</button>
+      <button class="btn" id="lm-stop">Stop the run</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="alert" hidden></div>
+<script src="/app.js" type="module"></script>
+</body>
+</html>
