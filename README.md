@@ -8,6 +8,10 @@
   <code>68 tests</code> · <code>0 axe violations in its own UI</code>
 </p>
 
+<p align="center"><sub>
+  Source-available — viewing is open, using it isn't. See <a href="LICENSE">LICENSE</a>.
+</sub></p>
+
 An AI-assisted accessibility auditing tool for **teams of human auditors**. It crawls a site —
 including the parts behind a login — measures everything a machine can prove, asks a model about
 the things machines are bad at, writes remediation code, and then **re-tests every fix in a fresh
@@ -327,3 +331,13 @@ Things this tool learned the hard way, kept here because they will bite the next
   background-colour reads as a false positive, which is why it ships at confidence 0.9.
 - The graph crawls and then scans, loading each page twice — bought deliberately, so a long audit
   is resumable from a checkpoint.
+
+---
+
+## License
+
+Source-available, not open source. The code is here to read — see [LICENSE](LICENSE) — but
+running, deploying, or redistributing it requires the copyright holder's permission, which
+extends to anyone explicitly given access to run their own copy (teammates, invited
+collaborators). Opening a pull request is welcome; standing up your own deployment of it isn't,
+without asking first.
