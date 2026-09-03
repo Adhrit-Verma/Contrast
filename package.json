@@ -9,7 +9,8 @@
     "test": "node --test",
     "accuracy": "node scripts/accuracy.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
-    "ui": "node src/cli.js ui"
+    "ui": "node src/cli.js ui",
+    "public": "node src/public/server.js"
   },
   "dependencies": {
     "@axe-core/puppeteer": "^4.13.0",

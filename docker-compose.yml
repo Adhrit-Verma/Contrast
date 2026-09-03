@@ -22,3 +22,26 @@ services:
       # first boot. Leave unset and use the dashboard's Settings tab instead —
       # either way it ends up encrypted at rest, never in this file.
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+
+  # Step 6: the public paste-a-URL funnel (src/public/server.js). Genuinely
+  # separate from the service above — no config.json mount, no sessions/
+  # mount (that's where the Gemini key lives), no GEMINI_API_KEY. It never
+  # calls Gemini at all; the blast radius of "anyone on the internet can make
+  # this fetch a URL and launch a real browser" stays as small as possible.
+  contrast-public:
+    build: .
+    image: contrast:latest
+    container_name: contrast-public
+    restart: unless-stopped
+    network_mode: host
+    command: ["node", "src/public/server.js"]
+    environment:
+      - PUBLIC_PORT=8080
+      - PUBLIC_MAX_PAGES=5
+      - PUBLIC_RATE_LIMIT=3
+      - PUBLIC_MAX_CONCURRENT=2
+    volumes:
+      # Read-only knowledge base (for the report's WCAG coverage section) and
+      # its own run artifacts — never the admin's config.json or sessions/.
+      - ./knowledge:/app/knowledge:ro
+      - ./runs:/app/runs

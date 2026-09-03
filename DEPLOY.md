@@ -105,6 +105,37 @@ needs an SSH private key stored as a repository secret — a real access-grantin
 a default to wire in quietly. If you want it later: add a `deploy` job to `ci.yml` that SSHes
 in and runs the two commands above, gated behind `needs: build-and-push`.
 
+## Step 6: the public scan funnel
+
+A second, genuinely public service (`contrast-public` in `docker-compose.yml`) — separate
+process, separate database, no access to `config.json` or `sessions/`. Bare IP + port for now
+(no domain yet), so open the firewall for it and bring it up:
+
+```bash
+sudo ufw allow 8080/tcp    # or whatever firewall this VPS actually uses — check first
+docker compose up -d contrast-public
+```
+
+Visit `http://<vps-public-ip>:8080/` from any machine (not just the tailnet) — paste a public
+URL, watch it scan, get a shareable `/r/<runId>` link. Defaults: 5 pages/scan, 3 scans/hour/IP,
+2 scans running at once — override via `PUBLIC_MAX_PAGES`, `PUBLIC_RATE_LIMIT`,
+`PUBLIC_MAX_CONCURRENT` in `docker-compose.yml`.
+
+**No TLS yet** — plaintext HTTP, by your own choice for now. The only data in flight is a URL to
+scan and the resulting report; no credentials or API keys ever touch this service. Put it behind
+nginx + certbot once a domain exists (step 7 will want one anyway).
+
+**Verify it for real** (the checklist's own "do this now"):
+```bash
+curl -X POST http://<vps-ip>:8080/scan -H 'content-type: application/json' \
+  -d '{"url":"https://www.w3.org/WAI/demos/bad/before/home.html"}'
+# poll the statusUrl it returns, then open the reportUrl in an incognito window
+# from a different device — it must load with no login of any kind
+for i in 1 2 3 4; do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://<vps-ip>:8080/scan \
+  -H 'content-type: application/json' -d '{"url":"https://example.com"}'; done
+# expect 202, 202, 202, then 429 once PUBLIC_RATE_LIMIT is exceeded
+```
+
 ## Gemini API key
 
 Set it once through the dashboard's **Settings** tab after first boot — it's encrypted at rest

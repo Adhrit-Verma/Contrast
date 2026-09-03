@@ -95,6 +95,54 @@ in git history. Whatever deployment the checklist refers to was set up outside t
 nothing here to diagnose "why it's down" — that needs to be answered from the Render dashboard
 itself (or from wherever the deploy was actually configured), not from this codebase.
 
+## Step 6 — public scan funnel
+
+`src/public/server.js` + `src/public/ssrf.js` + `src/public/ipLimiter.js` +
+`src/public/public/index.html`, added 2026-09-04. A deliberately **separate** small server from
+`src/ui/server.js` (the admin dashboard) — reuses the same phase-1–6 library functions
+(`crawl`, `scanPage`, the report writers) but shares zero runtime config or secrets:
+
+- **No `config.json`, no `sessions/` mount.** Never reads the admin's Gemini key, never writes a
+  named client. Each scan builds an ephemeral, in-memory client object per request.
+- **Deterministic scan only — never calls Gemini.** The checklist's own text names "protects the
+  Gemini cost cap" as the reason for the rate limit; the safer reading is this path has no cap to
+  protect because it never makes an AI call at all.
+- **SSRF guard is mandatory, not optional** (`ssrf.js`): resolves the hostname and refuses
+  loopback/RFC1918/link-local/CGNAT addresses — including `100.64.0.0/10`, which is *also*
+  Tailscale's own address range. Without that specific check, a visitor could paste this
+  deployment's own tailnet address and have the public scanner reach the private admin
+  dashboard from Step 5, which has no auth beyond tailnet membership. Known, accepted gap:
+  checks the initial DNS resolution only, not full DNS-rebinding protection (documented with a
+  `ponytail:` comment naming the upgrade path).
+- **Separate SQLite db** (`runs/public.sqlite`) — but tracing the actual file-serving path
+  showed a separate db alone wasn't enough: screenshots and `report.html` still land in the
+  same shared `runs/<runId>/` folder on disk (a limitation of `scanPage()`'s hardcoded
+  `runDir()`, unchanged to keep this a small diff). The real authorization boundary is in the
+  static-file route itself: it checks `getRun(publicDb, runId)` before serving anything, so an
+  admin runId 404s even though the file exists on disk — **verified empirically**, not just
+  reasoned about, by fetching a real admin runId through the public server and confirming 404.
+- **A real bug the "do this now" verification caught**: the rate limiter originally checked
+  *before* URL validation, so two mistyped URLs or SSRF-blocked attempts burned a legitimate
+  visitor's entire hourly quota before their first real scan. Fixed by validating first — only
+  successful scan submissions consume the per-IP limit.
+- **A second real bug the same verification caught**: `startRun()` generates its own runId
+  internally and returns it; the original code generated a *second*, different id locally,
+  returned that one to the client, and never stored it — every `/status/:runId` and `/r/:runId`
+  request 404'd. Fixed to use `startRun()`'s return value as the single source of truth.
+- **Caps**: `PUBLIC_MAX_PAGES` (default 5), `PUBLIC_RATE_LIMIT` (default 3/hour/IP),
+  `PUBLIC_MAX_CONCURRENT` (default 2 scans at once, server-wide — bounds worst-case VPS load
+  regardless of how many distinct IPs are involved). Client IP is read from
+  `req.socket.remoteAddress` directly, not `X-Forwarded-For` — correct only because there is no
+  reverse proxy in front yet (bare IP:port); the comment in `server.js` flags this as the one
+  line that needs to change if a proxy is added later.
+- **9 new tests** (`test/ssrf.test.js`, `test/ipLimiter.test.js`) — pure logic, no browser
+  needed. End-to-end verified manually against a real target (`www.w3.org` WAI demo): SSRF
+  blocking, the two bug fixes above, rate-limit enforcement, the shareable report link, and
+  cross-service isolation from the admin's own runs.
+- **No TLS, no domain** — bare IP:port, per the operator's explicit choice. Not a credential-risk
+  surface (no logins, no API keys ever touch this service), just plaintext transport for which
+  URL someone is checking. Revisit once a domain exists for Step 7.
+
 ## Deployment
 
 `Dockerfile` + `docker-compose.yml` + `.github/workflows/ci.yml` + `DEPLOY.md`, added 2026-09-04.
@@ -266,6 +314,15 @@ Recall against criteria that do have a running rule is far higher.
 ## Status log
 
 *(newest first)*
+
+- **2026-09-04** — Step 6 complete: built the public scan funnel as a fully separate server
+  (`src/public/`) with an SSRF guard, per-IP rate limiting, a global concurrency gate, and a
+  minimal standalone paste-a-URL page. Real end-to-end verification (not just unit tests) caught
+  two genuine bugs — rate-limit checked before validation (typos burned quota), and a runId
+  mismatch that made every status/report lookup 404 — both fixed and re-verified. Confirmed by
+  fetching a real admin runId through the public server that the two services' run histories are
+  actually isolated, not just nominally separate. 87/87 tests pass. Bare IP:port, no TLS, per the
+  operator's own choice; revisit before Step 7 needs a real domain anyway.
 
 - **2026-09-04** — Step 5 in progress: added Dockerfile, docker-compose.yml (`network_mode:
   host`), .github/workflows/ci.yml (test + build/push to GHCR), and DEPLOY.md (Tailscale Serve
