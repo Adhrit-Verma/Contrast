@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contrast — free accessibility scan</title>
+<!-- Deliberately self-contained: this is a separate, small standalone app
+     from the admin dashboard (src/ui/public/), so it carries its own copy of
+     the brand's core tokens rather than reaching across processes for them. -->
+<style>
+  :root {
+    --canvas: #faf9f5; --surface: #ffffff; --surface-2: #f5f0e8; --line: #e6dfd8; --line-strong: #d5cec2;
+    --text: #141413; --text-2: #3d3d3a; --text-3: #6c6a64;
+    --accent: #cc785c; --accent-text: #a25439; --on-accent: #141413;
+    --sev-critical-bg: #fdecea; --sev-critical-fg: #9b1c14;
+    --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-display: "Tiempos Headline", "Iowan Old Style", Palatino, Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--canvas); color: var(--text); font: 15px/1.6 var(--font-ui); -webkit-font-smoothing: antialiased }
+  main { max-width: 640px; margin: 0 auto; padding: 64px 24px }
+  .back { display: inline-block; color: var(--text-3); font-size: 13px; text-decoration: none; margin-bottom: 24px }
+  .back:hover { color: var(--accent-text) }
+  h1 { font-family: var(--font-display); font-weight: 400; font-size: 32px; margin: 0 0 8px; letter-spacing: -.01em }
+  p.lead { color: var(--text-2); margin: 0 0 32px }
+  form { display: flex; gap: 8px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 8px; box-shadow: 0 1px 2px rgba(20,20,19,.06) }
+  form:focus-within { border-color: var(--accent) }
+  input[type=url] { flex: 1; border: 0; background: none; font: 18px var(--font-mono); padding: 12px; min-width: 0; color: var(--text) }
+  input[type=url]:focus-visible { outline: none }
+  button { font: inherit; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 20px }
+  button:hover { background: var(--accent-text); border-color: var(--accent-text); color: #fff }
+  button:disabled { opacity: .5; cursor: not-allowed }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px }
+  .err { color: var(--sev-critical-fg); font-size: 14px; margin-top: 12px }
+  .status { margin-top: 24px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: none }
+  .status.show { display: block; animation: rise .3s var(--ease) both }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+  .status a { color: var(--accent-text); font-weight: 600 }
+  .notice { margin-top: 40px; font-size: 13px; color: var(--text-3); border-left: 3px solid var(--accent); padding: 8px 0 8px 12px }
+  .mark { display: inline-block; width: 1em; vertical-align: -0.15em }
+  .mark.spin { animation: spin 1.2s linear infinite }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important } }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← Contrast</a>
+  <h1>Free accessibility scan</h1>
+  <p class="lead">Paste a public web address. We'll crawl a few pages, run the same measured
+    checks Contrast uses in full audits — axe-core, the accessibility tree, a real keyboard
+    trace — and give you a report link you can share.</p>
+
+  <form id="f">
+    <input type="url" id="url" name="url" placeholder="example.com" autocomplete="url" spellcheck="false" aria-label="Address to scan" required>
+    <button type="submit" id="go">Scan it</button>
+  </form>
+  <p class="err" id="err" role="alert" hidden></p>
+
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <p class="notice">This free scanner runs <b>deterministic checks only</b> — no AI review, up to
+    5 pages, a few scans per hour per visitor. Automated tools cover roughly a quarter to a third
+    of WCAG success criteria; the full report says exactly which. It is not a claim of
+    conformance.</p>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const SPINNER = '<svg class="mark spin" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="42" stroke-dashoffset="14" stroke-linecap="round"/></svg>';
+
+$('#f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('#err'), status = $('#status'), go = $('#go');
+  err.hidden = true;
+  status.className = 'status';
+  go.disabled = true;
+  go.textContent = 'Starting…';
+  try {
+    const res = await fetch('/scan', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: $('#url').value }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `${res.status}`);
+    status.className = 'status show';
+    status.innerHTML = `${SPINNER} Scanning <code>${escapeHtml($('#url').value)}</code>… this usually takes 30–60 seconds.`;
+    poll(data.runId, data.reportUrl);
+  } catch (e2) {
+    err.textContent = e2.message;
+    err.hidden = false;
+  } finally {
+    go.disabled = false;
+    go.textContent = 'Scan it';
+  }
+});
+
+async function poll(runId, reportUrl) {
+  const status = $('#status');
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const res = await fetch(`/status/${runId}`).catch(() => null);
+    if (!res || !res.ok) continue;
+    const data = await res.json();
+    if (data.status === 'done') {
+      status.innerHTML = `Done. <a href="${reportUrl}">View your report →</a> (this link is shareable)`;
+      return;
+    }
+    if (data.status === 'error') {
+      status.innerHTML = `Something went wrong: ${escapeHtml(data.error || data.notes || 'unknown error')}`;
+      return;
+    }
+  }
+  status.innerHTML = 'Still going — this page will keep checking, or refresh the report link in a minute.';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+</script>
+</body>
+</html>

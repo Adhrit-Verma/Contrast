@@ -143,6 +143,28 @@ itself (or from wherever the deploy was actually configured), not from this code
   surface (no logins, no API keys ever touch this service), just plaintext transport for which
   URL someone is checking. Revisit once a domain exists for Step 7.
 
+## Step 7 — landing page
+
+`src/public/public/index.html` (landing) + `scan.html` (renamed from the Step 6 tool page,
+now at `/scan`), added 2026-09-04. Same public server, no new process — `server.js` gained two
+route lines. Same brand tokens as `scan.html` and the admin dashboard's `tokens.css`, copied
+inline rather than shared cross-process, for the same reason Step 6 did that.
+
+Shows the differentiator instead of just claiming it: a two-line demo strip reproduces the
+actual product's `MEASURED` (solid border) vs `ASSESSED` (dotted coral border) tagging with
+real-shaped example findings, right under the hero. Pricing is the checklist's own fallback —
+"Free during beta" — since there's no pricing model yet.
+
+**Verified, not just built**: a real headless-Chrome check (not eyeballing the HTML) confirmed
+the CTA button clears the fold with room to spare on three phone sizes (iPhone SE 375×667,
+iPhone 14 390×844, a small Android at 360×640) and that `npm run audit:ui`'s own tool — axe-core
+— reports zero violations on both the landing page and `/scan`, desktop and mobile. That check
+caught one real bug: the first draft had no `<main>` landmark (content sat directly under
+`<header>`/`<section>`/`<footer>` with nothing wrapping it) — fixed by wrapping the hero and
+feature sections in `<main>`. A hard-coded `<br>` in the headline was also removed after a
+screenshot showed it fighting with the browser's own wrapping at narrow widths, producing a
+choppier four-line headline than letting it wrap naturally.
+
 ## Deployment
 
 `Dockerfile` + `docker-compose.yml` + `.github/workflows/ci.yml` + `DEPLOY.md`, added 2026-09-04.
@@ -314,6 +336,12 @@ Recall against criteria that do have a running rule is far higher.
 ## Status log
 
 *(newest first)*
+
+- **2026-09-04** — Step 7 complete: added the landing page at `/` on the same public server from
+  Step 6, moved the scan tool to `/scan`. Verified with a real headless-Chrome check (not just
+  reading the HTML) that the CTA clears the fold on three phone sizes and that axe-core reports
+  zero violations on both pages, both widths — which caught a real missing-`<main>`-landmark bug
+  before it shipped. 87/87 tests still pass (no library code changed, just the public site).
 
 - **2026-09-04** — Step 6 complete: built the public scan funnel as a fully separate server
   (`src/public/`) with an SSRF guard, per-IP rate limiting, a global concurrency gate, and a

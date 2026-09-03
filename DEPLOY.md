@@ -136,6 +136,17 @@ for i in 1 2 3 4; do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://<vp
 # expect 202, 202, 202, then 429 once PUBLIC_RATE_LIMIT is exceeded
 ```
 
+## Step 7: the landing page
+
+Same `contrast-public` service, no new deploy step — `git pull` and `docker compose up -d
+--build contrast-public` picks it up. The landing page is now at `/`, the scan tool moved to
+`/scan` (linked from the landing page's CTA and top-nav).
+
+**Verify** (the checklist's own "do this now" — view it at mobile width, confirm the CTA is
+above the fold): open `http://<vps-ip>:8080/` on an actual phone, or in a desktop browser's
+device toolbar at ~375px wide. The "Scan your site free →" button should be visible without
+scrolling.
+
 ## Gemini API key
 
 Set it once through the dashboard's **Settings** tab after first boot — it's encrypted at rest

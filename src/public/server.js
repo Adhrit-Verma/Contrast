@@ -134,7 +134,10 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
 
     try {
       if (url.pathname === '/' && req.method === 'GET') {
-        return send(200, readFileSync(join(PUBLIC_DIR, 'index.html')));
+        return send(200, readFileSync(join(PUBLIC_DIR, 'index.html'))); // the landing page
+      }
+      if (url.pathname === '/scan' && req.method === 'GET') {
+        return send(200, readFileSync(join(PUBLIC_DIR, 'scan.html'))); // the paste-a-URL tool
       }
 
       if (url.pathname === '/scan' && req.method === 'POST') {
