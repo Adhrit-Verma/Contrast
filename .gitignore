@@ -9,3 +9,4 @@ config.json.tmp
 # OS cruft
 .DS_Store
 Thumbs.db
+CONTRAST_COMPLETION_CHECKLIST.md
