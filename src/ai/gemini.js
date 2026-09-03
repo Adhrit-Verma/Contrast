@@ -8,6 +8,13 @@ import { validate, parseJson } from './validate.js';
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 
+/** Pulled out so the money-path guard is testable without mocking the SDK. */
+export function checkPerRunCap(callsSoFar, cap) {
+  if (callsSoFar >= cap) {
+    throw new Error(`Gemini per-run cap reached (${cap} requests this run) — raise ai.perRunCap or narrow the scan`);
+  }
+}
+
 /** Gemini wants format:'enum' alongside enum, and rejects unknown keywords. */
 export function toGeminiSchema(schema) {
   if (!schema || typeof schema !== 'object') return schema;
@@ -95,6 +102,11 @@ export function createGemini({ ai = {}, db = null, log = console.log } = {}) {
         ...inlineImages.map((i) => ({ inlineData: { mimeType: i.mimeType ?? 'image/png', data: i.data } })),
       ];
       const text = await limiter.schedule(async () => {
+        // One createGemini() instance lives for exactly one audit run (assess,
+        // run --scope=assess/full, or the graph). A bug in a retry loop burning
+        // an unbounded number of real, billed calls is the actual "public tool
+        // with no cap" risk — the daily cap alone would not stop it same-day.
+        checkPerRunCap(counters.calls, ai.perRunCap ?? Infinity);
         counters.calls++;
         const res = await gm.generateContent({ contents: [{ role: 'user', parts }] });
         return res.response.text();

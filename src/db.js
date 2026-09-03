@@ -3,6 +3,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS runs (
@@ -48,6 +49,11 @@ export function openDb(path = 'runs/audit.sqlite') {
 
 export const pinRun = (db, runId, pinned) =>
   db.prepare('UPDATE runs SET pinned = ? WHERE id = ?').run(pinned ? 1 : 0, runId);
+
+/** Why a run came back thin — a blocked crawl, an exhausted re-login budget —
+ *  so the report and `runs` listing can say so without re-running it. */
+export const setRunNotes = (db, runId, notes) =>
+  db.prepare('UPDATE runs SET notes = ? WHERE id = ?').run(notes, runId);
 
 /** A run is rows in five tables plus a folder of screenshots. Take all of it. */
 export function deleteRun(db, runId) {
@@ -95,5 +101,16 @@ export const getRun = (db, runId) => db.prepare('SELECT * FROM runs WHERE id = ?
 export const getPages = (db, runId) => db.prepare('SELECT * FROM pages WHERE runId = ?').all(runId);
 export const getFixes = (db, runId) => db.prepare('SELECT * FROM fixes WHERE runId = ?').all(runId);
 export const getReviewQueue = (db, runId) => db.prepare('SELECT * FROM review_queue WHERE runId = ?').all(runId);
+
+/**
+ * Escalate one thing an auditor needs to see. The one place both the CLI paths
+ * and the LangGraph nodes write a failure that must survive without re-running
+ * the audit to learn about it.
+ */
+export const insertReview = (db, runId, finding, reason, context) =>
+  insert(db, 'review_queue', {
+    id: randomUUID().slice(0, 18), runId, findingId: finding?.id ?? null,
+    reason, context: JSON.stringify(context ?? {}), createdAt: new Date().toISOString(),
+  });
 export const listRuns = (db) =>
   db.prepare('SELECT * FROM runs ORDER BY pinned DESC, startedAt DESC').all();

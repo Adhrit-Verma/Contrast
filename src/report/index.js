@@ -250,6 +250,7 @@ export function writeHtml(db, runId, path, catalogue = []) {
 <body><main>
 <h1>Accessibility audit report</h1>
 <p class="meta">Client <b>${esc(report.run.clientId)}</b> · run <code>${esc(runId)}</code> · seed ${esc(report.run.seedUrl)} · generated ${esc(report.generatedAt)}</p>
+${report.run.notes ? `<div class="notice" style="border-left-color:#b3261e"><b>This run did not complete as expected.</b> ${esc(report.run.notes)}</div>` : ''}
 <div class="notice"><b>Scope and limits.</b> ${esc(LIMITS_NOTICE)}</div>
 <div class="cards">
   <div class="card"><b>${s.findings}</b>findings</div>

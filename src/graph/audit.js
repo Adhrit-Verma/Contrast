@@ -12,7 +12,7 @@ import { assessPage } from '../ai/tasks.js';
 import { generateFixes } from '../ai/remediate.js';
 import { retrieveGuidance, guidanceText, criteriaCatalogue } from '../ai/knowledge.js';
 import { verifyFix } from '../verify/index.js';
-import { insert, insertFindings } from '../db.js';
+import { insert, insertFindings, insertReview, setRunNotes } from '../db.js';
 import { writeJson, writeHtml, writeVpat } from '../report/index.js';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -52,11 +52,7 @@ export function buildAuditGraph(deps) {
   const { client, db, session, gemini, kb, log = console.log } = deps;
   const maxAttempts = client.graph?.maxFixAttempts ?? 3;
 
-  const escalate = (runId, finding, reason, context) =>
-    insert(db, 'review_queue', {
-      id: randomUUID().slice(0, 18), runId, findingId: finding?.id ?? null,
-      reason, context: JSON.stringify(context ?? {}), createdAt: new Date().toISOString(),
-    });
+  const escalate = (runId, finding, reason, context) => insertReview(db, runId, finding, reason, context);
 
   // ------------------------------------------------------------- nodes
 
@@ -74,7 +70,19 @@ export function buildAuditGraph(deps) {
     // ponytail: discovery and scanning are separate passes, so each page loads
     // twice. Bought deliberately — it makes the scan loop resumable from a
     // checkpoint, which matters far more on a 500-page authenticated audit.
-    const pages = await crawl(session, client, async () => {});
+    const pages = await crawl(session, client, async () => {}, {
+      onAbandoned: (reason) => setRunNotes(db, runId, reason),
+    });
+    // A page crawl() already flagged with an error never reaches scanPageNode,
+    // so this is its only chance to leave a row in the run's page trace.
+    for (const p of pages) {
+      if (p.error) {
+        insert(db, 'pages', {
+          runId, url: p.url, finalUrl: p.finalUrl ?? null, title: p.title ?? null,
+          status: p.status ?? null, screenshotPath: null, a11yTree: null, error: p.error,
+        });
+      }
+    }
     const urls = pages.filter((p) => !p.error).map((p) => p.finalUrl ?? p.url);
     log(`crawl: ${urls.length} pages in scope`);
     return { runId, clientId: client.id, pagesQueued: urls };
@@ -91,6 +99,10 @@ export function buildAuditGraph(deps) {
       );
       return { pagesQueued: rest, pagesScanned: [url], findings, inventories: [inventory] };
     } catch (err) {
+      insert(db, 'pages', {
+        runId: state.runId, url, finalUrl: null, title: null,
+        status: null, screenshotPath: null, a11yTree: null, error: err.message,
+      });
       return { pagesQueued: rest, errors: [{ node: 'scanPage', url, message: err.message }] };
     }
   }

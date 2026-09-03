@@ -8,6 +8,19 @@ export const isRateLimit = (err) =>
   err?.response?.status === 429 ||
   /\b429\b|RESOURCE_EXHAUSTED|rate.?limit|quota/i.test(err?.message ?? '');
 
+// A dropped connection or a 503 is exactly as recoverable as a 429 — the
+// pipeline should not surface a real audit failure for something that would
+// have worked on the next attempt. Genuine client-side errors (bad request,
+// invalid schema, missing key) are never in this set, so they still fail fast.
+const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
+const TRANSIENT_PATTERN = /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|fetch failed|socket hang up|network (error|timeout)/i;
+
+export const isTransient = (err) => {
+  const status = err?.status ?? err?.response?.status;
+  if (status && TRANSIENT_STATUS.has(status)) return true;
+  return isRateLimit(err) || TRANSIENT_PATTERN.test(err?.message ?? '');
+};
+
 export function createLimiter({
   rpm = 15,
   // Burst 1 = pure pacing. A quota of "15 RPM" is enforced over a rolling
@@ -60,10 +73,11 @@ export function createLimiter({
         try {
           return await fn();
         } catch (err) {
-          if (!isRateLimit(err) || attempt >= maxRetries) throw err;
+          if (!isTransient(err) || attempt >= maxRetries) throw err;
           const backoff = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
           const delay = Math.round(backoff * (0.5 + random() * 0.5)); // full-ish jitter
-          onWait(delay, `${label} 429, retry ${attempt + 1}/${maxRetries}`);
+          const why = isRateLimit(err) ? '429' : err?.status ?? err?.response?.status ?? 'network error';
+          onWait(delay, `${label} ${why}, retry ${attempt + 1}/${maxRetries}`);
           await sleep(delay);
         }
       }

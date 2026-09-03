@@ -95,6 +95,40 @@ in git history. Whatever deployment the checklist refers to was set up outside t
 nothing here to diagnose "why it's down" — that needs to be answered from the Render dashboard
 itself (or from wherever the deploy was actually configured), not from this codebase.
 
+## Step 4 — Gemini hardening + failure diagnosability
+
+- **Per-run cost cap**: `ai.perRunCap` (config default 300) stops a single audit — one
+  `createGemini()` instance, one CLI invocation — from making unbounded real, billed calls even
+  if a retry loop misbehaves. This sits alongside the pre-existing daily cap, which alone
+  wouldn't stop same-day runaway spend. Enforced in `checkPerRunCap()` (`src/ai/gemini.js`),
+  tested directly without mocking the SDK.
+- **Retry/backoff now covers transient failures generally, not just 429.** `isTransient()`
+  (`src/ai/limiter.js`) retries 5xx and dropped-connection errors (ECONNRESET, fetch failed,
+  etc.) with the same exponential backoff + jitter as rate limits; genuine client errors (400,
+  401, bad schema) still fail immediately. `isRateLimit` stays as the 429-specific check it was.
+- **Bot-block and dead-URL handling was already implemented** (`looksBlocked()` in
+  `session.js`, checked every page in `crawl.js`) — step 4 verified it empirically instead of
+  building anything new. `test/blocked.test.js` runs a real headless browser against a local
+  server serving a Cloudflare-style challenge page, and against a guaranteed-dead port: no
+  exception in either case, nothing gets scanned, the reason is recorded as structured data,
+  not just console text.
+- **Structured logging — failures now survive past the run that produced them.** Two real gaps
+  closed:
+  1. A page crawl.js flags with `.error` (blocked, dead link, exhausted re-login) never reached
+     the `pages` table before — only successfully scanned pages did. `recordUnscannedPages()`
+     (cli.js) and the equivalent inline logic in `graph/audit.js`'s `crawlNode`/`scanPageNode`
+     now write a `pages` row for every failure, so a run's per-page trace is complete without
+     needing terminal scrollback.
+  2. `runs.notes` (an existing, previously-unused schema column) now records *why* a run came
+     back thin — `crawl.js`'s new `onAbandoned` callback wires blocked/relogin-exhausted crawls
+     into it from all three call sites (`scan`, `run`, and the graph). `node src/cli.js runs`
+     prints it; the HTML report shows a red notice banner when a run didn't complete as
+     expected.
+  3. AI task errors from the CLI paths (`assess`, `run --scope=assess|ai`) are now escalated
+     into `review_queue` via the new shared `insertReview()` (`src/db.js`, extracted from what
+     was a graph-only closure) — previously only the graph path persisted these; the CLI paths
+     only printed them to a console that's gone once the job ends.
+
 ## Gemini API key handling
 
 - **Never in `config.json`** and never hardcoded. Two sources, env wins:
@@ -191,6 +225,16 @@ Recall against criteria that do have a running rule is far higher.
 
 *(newest first)*
 
+- **2026-09-04** — Step 4 complete: added `ai.perRunCap` (default 300, alongside the existing
+  daily cap), broadened retry/backoff from 429-only to all transient failures (5xx, dropped
+  connections) via `isTransient()`, and closed two real structured-logging gaps — pages that
+  fail before scanning now get a `pages` row instead of vanishing, and `runs.notes` (an
+  existing unused column) now records why a crawl was abandoned. AI task errors from the CLI
+  paths now escalate to `review_queue` like the graph path already did, via a newly shared
+  `insertReview()`. Verified bot-block and dead-URL handling empirically with a new
+  `test/blocked.test.js` (real browser, local server — no dependency on a third party's
+  defenses still being up later) rather than building new mechanism, since it already worked.
+  78/78 tests pass.
 - **2026-09-04** — Step 3 complete: added `scripts/accuracy.mjs` (ACT Rules precision/recall
   harness) and WCAG coverage classification in reports (JSON + HTML + VPAT remarks). Measured
   87% precision / 37% recall over 931 ACT cases. The harness immediately earned itself by

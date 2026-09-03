@@ -4,7 +4,7 @@ import { TASKS, assessPage } from '../src/ai/tasks.js';
 import { generateFixes } from '../src/ai/remediate.js';
 import { groupComponents, bySeverity, deterministicOnly } from '../src/scan/group.js';
 import { chunkMarkdown, criteriaCatalogue } from '../src/ai/knowledge.js';
-import { toGeminiSchema } from '../src/ai/gemini.js';
+import { toGeminiSchema, checkPerRunCap } from '../src/ai/gemini.js';
 
 /** Stub model: records prompts, replies with whatever the test tells it to. */
 const stubGemini = (reply) => {
@@ -161,6 +161,13 @@ test('knowledge chunking keeps criterion numbers addressable for exact lookup', 
     { number: '1.4.3', name: 'Contrast (Minimum)', level: 'AA' },
     { number: '2.4.7', name: 'Focus Visible', level: 'AA' },
   ]);
+});
+
+test('checkPerRunCap stops a runaway loop from burning unbounded real calls', () => {
+  assert.doesNotThrow(() => checkPerRunCap(0, 300));
+  assert.doesNotThrow(() => checkPerRunCap(299, 300));
+  assert.throws(() => checkPerRunCap(300, 300), /per-run cap reached \(300 requests this run\)/);
+  assert.doesNotThrow(() => checkPerRunCap(1e6, Infinity), 'no config value means no cap');
 });
 
 test('toGeminiSchema marks enums the way the API requires', () => {

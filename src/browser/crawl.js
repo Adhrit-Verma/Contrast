@@ -10,7 +10,7 @@ import { looksSignedOut, looksBlocked, MARK } from './session.js';
  * a second visit.
  * @param {{page: import('puppeteer').Page, newPage: () => Promise<any>}} ctx from openSession()
  */
-export async function crawl(ctx, client, onPage = async () => {}, { onSessionExpired = null } = {}) {
+export async function crawl(ctx, client, onPage = async () => {}, { onSessionExpired = null, onAbandoned = null } = {}) {
   const cfg = client.crawl;
   const seed = canonical(client.seedUrl);
   const queue = [{ url: seed, depth: 0 }];
@@ -80,6 +80,10 @@ export async function crawl(ctx, client, onPage = async () => {}, { onSessionExp
           console.log(`  ✗ blocked at ${page.url()} — ${blocked}`);
           console.log('  nothing was scanned: a block page is not the site. Re-run with a real');
           console.log('  browser window (ui.headlessJobs: false) where you are an ordinary visitor.');
+          // Console output does not survive past the job's lifetime — this is
+          // the only copy of "why" that a report or `runs` listing can show
+          // without the operator having kept the terminal scrollback.
+          onAbandoned?.(`blocked at ${page.url()}: ${blocked}`);
           return;
         }
 
@@ -93,6 +97,7 @@ export async function crawl(ctx, client, onPage = async () => {}, { onSessionExp
             abandoned = true;
             visited.push({ url: job.url, depth: job.depth, error: 'abandoned: still signed out after re-login' });
             console.log(`  ✗ giving up after ${relogins} sign-in attempts — check loggedOutPattern for "${client.id}"`);
+            onAbandoned?.(`gave up after ${relogins} sign-in attempts — check loggedOutPattern for "${client.id}"`);
             return;
           }
           relogins++;

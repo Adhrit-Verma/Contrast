@@ -5,12 +5,11 @@ import { loadConfig, clientConfig, resolveTarget, groupTree } from './config.js'
 import { applySecrets } from './secrets.js';
 import { launch, interactiveLogin, openSession } from './browser/session.js';
 import { crawl } from './browser/crawl.js';
-import { openDb, listRuns, getFindings } from './db.js';
+import { openDb, listRuns, getFindings, insert, insertFindings, insertReview, setRunNotes } from './db.js';
 import { scanPage, startRun, finishRun, runDir } from './scan/index.js';
 import { assessPage } from './ai/tasks.js';
 import { createGemini } from './ai/gemini.js';
 import { loadKnowledge, criteriaCatalogue } from './ai/knowledge.js';
-import { insertFindings } from './db.js';
 import { writeJson, writeHtml, writeDiffHtml, writeVpat, buildReport } from './report/index.js';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -77,10 +76,17 @@ switch (cmd) {
     console.log(`run ${runId}`);
     const session = await openSession(client);
     let total = 0;
-    await crawl(session, client, async (page, info) => {
-      const { findings } = await scanPage(page, info, { runId, client, db: database });
-      total += findings.length;
-    });
+    const scanned = new Set();
+    const visited = await crawl(
+      session, client,
+      async (page, info) => {
+        const { findings } = await scanPage(page, info, { runId, client, db: database });
+        scanned.add(info.finalUrl ?? info.url);
+        total += findings.length;
+      },
+      { onAbandoned: (reason) => setRunNotes(database, runId, reason) }
+    );
+    recordUnscannedPages(database, runId, visited, scanned);
     finishRun(database, runId);
     await session.browser.close();
     console.log(`\n${total} findings → run ${runId}`);
@@ -101,7 +107,12 @@ switch (cmd) {
       const ctx = { runId, pageUrl: inventory.pageUrl, screenshotDir: join(runDir(runId), 'screenshots') };
       const { findings, errors } = await assessPage({ gemini, kb, inventory, ctx, cfg: client.ai });
       all.push(...findings);
-      for (const e of errors) console.log(`  ! ${e.task}: ${e.message}`);
+      for (const e of errors) {
+        console.log(`  ! ${e.task}: ${e.message}`);
+        // Console output does not survive the run — this is what lets an
+        // auditor see why a page's AI findings are thin without re-running it.
+        insertReview(database, runId, null, `AI task ${e.task} failed: ${e.message}`, { pageUrl: inventory.pageUrl, items: e.items });
+      }
     }
     insertFindings(database, all);
     console.log(`${all.length} AI findings added to run ${runId}`, gemini.stats());
@@ -130,14 +141,20 @@ switch (cmd) {
       console.log(`run ${runId}`);
       const session = await openSession(client);
       let total = 0;
-      await crawl(
+      const scanned = new Set();
+      const visited = await crawl(
         session, client,
         async (page, info) => {
           const { findings } = await scanPage(page, info, { runId, client, db: database });
+          scanned.add(info.finalUrl ?? info.url);
           total += findings.length;
         },
-        { onSessionExpired: (url) => interactiveLogin(session.browser, client, { url, why: 'the session expired mid-crawl' }) }
+        {
+          onSessionExpired: (url) => interactiveLogin(session.browser, client, { url, why: 'the session expired mid-crawl' }),
+          onAbandoned: (reason) => setRunNotes(database, runId, reason),
+        }
       );
+      recordUnscannedPages(database, runId, visited, scanned);
       finishRun(database, runId);
 
       if (scope === 'assess' || scope === 'ai') {
@@ -150,7 +167,10 @@ switch (cmd) {
           const ctx = { runId, pageUrl: inventory.pageUrl, screenshotDir: join(runDir(runId), 'screenshots') };
           const { findings, errors } = await assessPage({ gemini, kb, inventory, ctx, cfg: client.ai });
           ai.push(...findings);
-          for (const e of errors) console.log(`  ! ${e.task}: ${e.message}`);
+          for (const e of errors) {
+            console.log(`  ! ${e.task}: ${e.message}`);
+            insertReview(database, runId, null, `AI task ${e.task} failed: ${e.message}`, { pageUrl: inventory.pageUrl, items: e.items });
+          }
         }
         insertFindings(database, ai);
         total += ai.length;
@@ -199,7 +219,7 @@ switch (cmd) {
   case 'runs': {
     for (const r of listRuns(db())) {
       const n = getFindings(db(), r.id).length;
-      console.log(`${r.id}  ${r.clientId.padEnd(12)} ${String(n).padStart(5)} findings  ${r.finishedAt ? 'done' : 'INCOMPLETE'}  ${r.seedUrl}`);
+      console.log(`${r.id}  ${r.clientId.padEnd(12)} ${String(n).padStart(5)} findings  ${r.finishedAt ? 'done' : 'INCOMPLETE'}  ${r.seedUrl}${r.notes ? `\n    ⚠ ${r.notes}` : ''}`);
     }
     break;
   }
@@ -213,6 +233,24 @@ switch (cmd) {
   default:
     console.log(USAGE);
     process.exit(cmd ? 1 : 0);
+}
+
+/**
+ * A page crawl.js already flagged with `.error` — blocked, a dead link, a
+ * session that never recovered — never reaches scanPage and so never gets a
+ * `pages` row on its own. Give it one so the run's per-page trace is complete
+ * without needing the console scrollback to explain the gap.
+ */
+function recordUnscannedPages(database, runId, visited, scanned) {
+  for (const v of visited) {
+    const url = v.finalUrl ?? v.url;
+    if (v.error && !scanned.has(url)) {
+      insert(database, 'pages', {
+        runId, url: v.url, finalUrl: v.finalUrl ?? null, title: v.title ?? null,
+        status: v.status ?? null, screenshotPath: null, a11yTree: null, error: v.error,
+      });
+    }
+  }
 }
 
 function loadInventories(runId) {

@@ -49,6 +49,7 @@
     "rpm": 15,
     "burst": 1,
     "dailyCap": 1000,
+    "perRunCap": 300,
     "maxRetries": 5,
     "maxRepairs": 2,
     "temperature": 0.2,

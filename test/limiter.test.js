@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLimiter, isRateLimit } from '../src/ai/limiter.js';
+import { createLimiter, isRateLimit, isTransient } from '../src/ai/limiter.js';
 import { validate, parseJson } from '../src/ai/validate.js';
 
 /** Virtual clock: sleep() jumps time instead of waiting. */
@@ -85,6 +85,28 @@ test('isRateLimit recognises the shapes Gemini actually throws', () => {
   assert.ok(isRateLimit({ status: 429 }));
   assert.ok(isRateLimit(new Error('[429 Too Many Requests] RESOURCE_EXHAUSTED')));
   assert.ok(!isRateLimit(new Error('400 invalid argument')));
+});
+
+test('limiter retries a dropped connection or a 503, not just 429', async () => {
+  const clock = fakeClock();
+  const limiter = createLimiter({ rpm: 1000, baseDelayMs: 500, now: clock.now, sleep: clock.sleep, random: () => 0 });
+  let calls = 0;
+  const result = await limiter.schedule(async () => {
+    if (++calls === 1) throw Object.assign(new Error('service unavailable'), { status: 503 });
+    if (calls === 2) throw new Error('fetch failed: ECONNRESET');
+    return 'ok';
+  });
+  assert.equal(result, 'ok');
+  assert.equal(calls, 3);
+});
+
+test('isTransient covers 5xx and network drops, never a genuine client error', () => {
+  assert.ok(isTransient({ status: 503 }));
+  assert.ok(isTransient(new Error('fetch failed')));
+  assert.ok(isTransient(new Error('ECONNRESET')));
+  assert.ok(isTransient({ status: 429 }));
+  assert.ok(!isTransient(new Error('400 invalid argument')));
+  assert.ok(!isTransient({ status: 401 }));
 });
 
 const SCHEMA = {
