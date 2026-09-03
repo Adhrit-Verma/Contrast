@@ -1,7 +1,9 @@
 // Phase 6. Plain string templating — a report viewer is not a product UI.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
+import axeCore from 'axe-core';
 import { getFindings, getRun, getPages, getFixes, getReviewQueue } from '../db.js';
+import { wcagFromTags } from '../scan/normalize.js';
 
 export const LIMITS_NOTICE =
   'Automated testing detects roughly 30–40% of WCAG issues. This report is NOT a claim of ' +
@@ -14,7 +16,76 @@ const esc = (s) =>
 const SEV_ORDER = { critical: 0, serious: 1, moderate: 2, minor: 3 };
 const understanding = (c) => (c ? `https://www.w3.org/WAI/WCAG22/Understanding/${c}` : null);
 
-export function buildReport(db, runId) {
+// ------------------------------------------------------------- coverage
+
+// Criteria our own non-axe detectors cover: the keyboard and a11y-tree rules in
+// scan/normalize.js, and the five AI judgment tasks in ai/tasks.js. Listed here
+// rather than imported because importing ai/tasks.js drags Lighthouse and
+// Puppeteer into every report render; test/coverage.test.js asserts it stays in
+// step with TASKS so the list cannot silently drift.
+const OWN_CRITERIA = ['1.1.1', '1.3.1', '1.3.2', '2.4.3', '2.4.4', '2.4.7', '3.3.2', '4.1.2'];
+
+// axe ships rules it does not actually run: experimental and deprecated ones,
+// plus AAA rules that are off unless explicitly enabled. Counting those as
+// coverage claims checks that never happen — the ACT harness caught exactly
+// that (1.4.6, 2.5.3, 1.3.4 each had a "rule" that detected nothing at all).
+const NOT_RUN_BY_DEFAULT = ['experimental', 'deprecated', 'wcag2aaa'];
+
+/**
+ * Every criterion with an automated rule that actually runs. Derived from axe's
+ * own rule metadata, never a hand-maintained table — as normalize.js does.
+ */
+export function automatedCriteria() {
+  const out = new Set(OWN_CRITERIA);
+  for (const rule of axeCore.getRules()) {
+    const tags = rule.tags ?? [];
+    if (NOT_RUN_BY_DEFAULT.some((t) => tags.includes(t))) continue;
+    const { criterion } = wcagFromTags(tags);
+    if (criterion) out.add(criterion);
+  }
+  return out;
+}
+
+export const COVERAGE_NOTE =
+  'A criterion counted as automated only means a rule exists that can test it. It is not a claim ' +
+  'that this run proved anything: a criterion with no findings still needs a human to confirm it, ' +
+  'and criteria marked manual-only cannot be tested by any automated rule at all.';
+
+/**
+ * Per-criterion coverage for the catalogue: which criteria a machine could even
+ * look at, and which are human-only work. This is what stops a report with few
+ * findings from reading as a clean bill of health.
+ */
+export function wcagCoverage(findings, catalogue = []) {
+  const auto = automatedCriteria();
+  const counts = new Map();
+  for (const f of findings) {
+    if (f.wcagCriterion) counts.set(f.wcagCriterion, (counts.get(f.wcagCriterion) ?? 0) + 1);
+  }
+  const rows = catalogue.map((c) => {
+    const hits = counts.get(c.number) ?? 0;
+    const automated = auto.has(c.number);
+    return {
+      ...c,
+      automated,
+      findings: hits,
+      status: !automated ? 'manual-only' : hits ? 'findings' : 'checked-clean',
+    };
+  });
+  return {
+    note: COVERAGE_NOTE,
+    rows,
+    counts: {
+      total: rows.length,
+      automated: rows.filter((r) => r.automated).length,
+      manualOnly: rows.filter((r) => !r.automated).length,
+      withFindings: rows.filter((r) => r.status === 'findings').length,
+      checkedClean: rows.filter((r) => r.status === 'checked-clean').length,
+    },
+  };
+}
+
+export function buildReport(db, runId, catalogue = []) {
   const run = getRun(db, runId);
   if (!run) throw new Error(`unknown run ${runId}`);
   const findings = getFindings(db, runId);
@@ -26,6 +97,7 @@ export function buildReport(db, runId) {
     generatedAt: new Date().toISOString(),
     limits: LIMITS_NOTICE,
     summary: summarise(findings, fixes),
+    coverage: wcagCoverage(findings, catalogue),
     pages: getPages(db, runId),
     findings: findings.map((f) => ({ ...f, fix: fixByFinding.get(f.id) ?? null })),
     reviewQueue: getReviewQueue(db, runId),
@@ -54,8 +126,8 @@ function summarise(findings, fixes) {
   };
 }
 
-export function writeJson(db, runId, path) {
-  const report = buildReport(db, runId);
+export function writeJson(db, runId, path, catalogue = []) {
+  const report = buildReport(db, runId, catalogue);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(report, null, 2));
   return path;
@@ -125,8 +197,28 @@ const fixHtml = (fix) => `<div>
   ${fix.explanation ? `<p class="meta">${esc(fix.explanation)}</p>` : ''}
 </div>`;
 
-export function writeHtml(db, runId, path) {
-  const report = buildReport(db, runId);
+const COVERAGE_LABEL = {
+  findings: '<span class="tag critical">findings</span>',
+  'checked-clean': '<span class="tag det">checked, nothing found</span>',
+  'manual-only': '<span class="tag unverified">manual check required</span>',
+};
+
+/** The section that stops "few findings" from reading as "accessible". */
+function coverageHtml(cov) {
+  if (!cov?.rows?.length) return '';
+  const c = cov.counts;
+  const row = (r) =>
+    `<tr><td>${esc(r.number)} ${esc(r.name)}</td><td>${esc(r.level)}</td><td>${COVERAGE_LABEL[r.status]}</td><td>${r.findings || ''}</td></tr>`;
+  return `<h2>WCAG coverage — what a machine could check</h2>
+<div class="notice"><b>${c.automated} of ${c.total} criteria have an automated rule behind them; ${c.manualOnly} can only be judged by a human.</b>
+${esc(COVERAGE_NOTE)}</div>
+<details><summary>Per-criterion coverage (${c.total} criteria)</summary>
+<table><tr><th>Criterion</th><th>Level</th><th>Automated coverage</th><th>Findings</th></tr>
+${cov.rows.map(row).join('')}</table></details>`;
+}
+
+export function writeHtml(db, runId, path, catalogue = []) {
+  const report = buildReport(db, runId, catalogue);
   const reportDir = dirname(path);
   const s = report.summary;
 
@@ -170,6 +262,7 @@ export function writeHtml(db, runId, path) {
 <p class="legend"><span><span class="tag det">DETERMINISTIC</span> measured by axe / Lighthouse / the accessibility tree / keyboard trace — certain</span>
 <span><span class="tag ai">AI-ASSESSED</span> judged by a model — needs auditor confirmation</span></p>
 <h2>Severity</h2><table><tr>${Object.entries(s.bySeverity).map(([k, v]) => `<th>${esc(k)}</th>`).join('')}</tr><tr>${Object.entries(s.bySeverity).map(([, v]) => `<td>${v}</td>`).join('')}</tr></table>
+${coverageHtml(report.coverage)}
 <h2>Findings</h2>
 ${pagesHtml || '<p>No findings recorded.</p>'}
 ${report.reviewQueue.length ? `<h2>Escalated to human review (${report.reviewQueue.length})</h2><table><tr><th>Finding</th><th>Reason</th></tr>${report.reviewQueue.map((r) => `<tr><td><code>${esc(r.findingId)}</code></td><td>${esc(r.reason)}</td></tr>`).join('')}</table>` : ''}
@@ -249,18 +342,23 @@ export function buildVpat(db, runId, criteriaCatalogue) {
     byCriterion.get(f.wcagCriterion).push(f);
   }
 
+  const auto = automatedCriteria();
   const rows = criteriaCatalogue
     .filter((c) => VPAT_LEVELS.includes(c.level))
     .map((c) => {
       const hits = byCriterion.get(c.number) ?? [];
       const deterministic = hits.filter((f) => f.source !== 'ai');
       const conformance = hits.length === 0 ? 'Not Evaluated' : deterministic.length ? 'Does Not Support' : 'Partially Supports';
+      // "Nothing found" and "nothing could be looked for" are very different
+      // facts, and only one of them is worth an auditor's time first.
       const remark =
         hits.length === 0
-          ? 'No automated coverage for this criterion in this run — requires manual evaluation.'
+          ? auto.has(c.number)
+            ? 'Automated rules for this criterion ran and reported nothing. That is not conformance — a human must still confirm it.'
+            : 'No automated rule covers this criterion at all — requires manual/assistive-technology evaluation.'
           : `${hits.length} finding(s) across ${new Set(hits.map((f) => f.pageUrl)).size} page(s)` +
             (deterministic.length ? `, ${deterministic.length} measured by automated tooling` : ', all AI-assessed and pending auditor confirmation');
-      return { ...c, conformance, remark, findings: hits.length };
+      return { ...c, conformance, remark, findings: hits.length, automated: auto.has(c.number) };
     });
 
   const md = `# Accessibility Conformance Report — DRAFT
@@ -284,7 +382,8 @@ ${rows.map((r) => `| ${r.number} ${r.name} | ${r.level} | ${r.conformance} | ${r
 ## Summary of automated coverage
 
 - Criteria with automated findings: ${rows.filter((r) => r.findings > 0).length}
-- Criteria not evaluated automatically: ${rows.filter((r) => r.findings === 0).length}
+- Criteria checked automatically with nothing found (still need a human): ${rows.filter((r) => r.findings === 0 && r.automated).length}
+- Criteria no automated rule can cover (manual evaluation required): ${rows.filter((r) => !r.automated).length}
 - Total findings: ${findings.length} (${findings.filter((f) => f.source !== 'ai').length} deterministic, ${findings.filter((f) => f.source === 'ai').length} AI-assessed)
 `;
   return { markdown: md, rows };

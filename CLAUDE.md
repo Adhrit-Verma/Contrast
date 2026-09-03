@@ -121,10 +121,88 @@ itself (or from wherever the deploy was actually configured), not from this code
   — AI features (`assess`, `full` scope, `audit`) will fail immediately with a clear error
   until one is added via Settings or `GEMINI_API_KEY`.
 
+## Accuracy harness
+
+`npm run accuracy` (`scripts/accuracy.mjs`) runs the deterministic scanner against the
+[W3C ACT Rules](https://act-rules.github.io/) community test cases — free, public,
+pre-labelled fixtures with a known expected outcome per WCAG criterion — and computes
+precision/recall per criterion. Results land in `runs/act/accuracy.json`, and every
+missed detection or false alarm in `runs/act/disagreements.json`.
+
+```bash
+npm run accuracy                    # bounded sample (120 cases)
+node scripts/accuracy.mjs --all     # all 931 labelled cases (~30 min)
+node scripts/accuracy.mjs --rule 6cfa84
+node scripts/accuracy.mjs --refresh # re-fetch the test case index
+```
+
+Measurement decisions worth knowing:
+
+- **It measures axe-core.** The deterministic layer *is* axe, so this is not an independent
+  engine's score. A criterion at recall 0 means "no automated rule covers this", which is
+  exactly the signal the coverage section needs.
+- **A literal "Contrast vs axe-core" cross-check would be tautological** — they are the same
+  results. The meaningful disagreement is tool vs. ACT's labelled ground truth, which is what
+  `disagreements.json` records.
+- **axe's `incomplete` does not count as a detection.** Scoring "could not decide" as a catch
+  would flatter the numbers; it is tracked separately.
+- **The tree and keyboard detectors are excluded.** ACT fixtures are DOM fragments, so "no main
+  landmark" fires on nearly all of them — a corpus artifact that would swamp 1.3.1 with false
+  positives.
+- **4.1.1 Parsing scores recall 0 by design.** WCAG 2.2 removed it and `knowledge/wcag/criteria.md`
+  says not to report against it; axe dropped its duplicate-id rules accordingly. The ACT corpus
+  still labels those cases, so they register as misses. Correct behaviour, not a gap.
+
+## WCAG coverage in reports
+
+`wcagCoverage()` / `automatedCriteria()` in `src/report/index.js` classify every catalogued
+criterion as **findings**, **checked-clean**, or **manual-only**, so a report with few findings
+can never read as a clean bill of health. The automated set is derived from axe's own rule
+metadata (never a hand-maintained table) plus `OWN_CRITERIA` for the keyboard/tree/AI detectors,
+kept in step with `ai/tasks.js` by `test/coverage.test.js`.
+
+Against the shipped knowledge base: **23 of 86 catalogued criteria (27%) have an automated rule
+that actually runs.** Rules axe ships but does not run by default — experimental, deprecated, and
+AAA-only — are excluded, because counting them claims checks that never happen. The ACT harness
+caught that overstatement empirically (1.4.6, 2.5.3 and 1.3.4 each had a "rule" detecting nothing
+across the whole corpus).
+
+The VPAT now distinguishes "a rule ran and found nothing" from "no rule can cover this"; both
+still say *Not Evaluated*, because automated silence is never conformance.
+
+### Measured accuracy — full ACT corpus, 2026-09-04
+
+931 labelled cases, 38 criteria, 0 load errors: **87% precision, 37% recall** overall
+(130 TP / 20 FP / 222 FN).
+
+| | |
+|---|---|
+| Perfect (P and R = 100%) | 1.3.5, 1.4.12, 2.1.1, 2.2.1 |
+| Strong precision, partial recall | 1.1.1 (100/55), 1.4.3 (100/63), 2.4.2 (100/71), 3.1.2 (100/69), 2.4.4 (100/50), 1.4.4 (100/44) |
+| Worth fixing | **3.1.1 — 56% precision** (8 false alarms, all `lang`/`xml:lang` matching); **4.1.2 — 74% precision** (10 false alarms); 1.3.1 — 88% |
+| Zero recall, no rule runs | 1.2.x, 1.3.3, 1.3.4, 1.4.5/1.4.6/1.4.9, 2.1.2/3/4, 2.2.2, 2.2.4, 2.4.1, 2.4.6, 2.4.9, 2.5.3, 2.5.4, 3.2.5, 3.3.1 |
+| Zero recall by design | **4.1.1** — WCAG 2.2 removed it; axe dropped duplicate-id accordingly. The corpus still labels it, so it scores as 6 misses. Correct behaviour. |
+
+The 37% recall is the honest headline and is *not* a defect to fix: most misses are criteria no
+automated rule covers, which is precisely what the report's coverage section now says out loud.
+Recall against criteria that do have a running rule is far higher.
+
 ## Status log
 
 *(newest first)*
 
+- **2026-09-04** — Step 3 complete: added `scripts/accuracy.mjs` (ACT Rules precision/recall
+  harness) and WCAG coverage classification in reports (JSON + HTML + VPAT remarks). Measured
+  87% precision / 37% recall over 931 ACT cases. The harness immediately earned itself by
+  catching a real overstatement bug in `automatedCriteria()` — it had been counting axe's
+  experimental, deprecated and AAA rules, which never run; coverage dropped from a claimed 34%
+  to a true 27%. 73/73 tests pass. Weakest real result: 3.1.1 at 56% precision (`lang` matching
+  false alarms), then 4.1.2 at 74%.
+- **2026-09-04** — Step 2: skipped, per its own "skip if step 1 found everything solid" clause.
+  No phase was partially working or stubbed — nothing to fix. The one real gap (zero test
+  coverage on `src/graph/`) isn't cheaply fixable without either an invasive refactor to
+  export internal node functions or a heavy real-browser+real-Gemini integration test, so it
+  wasn't manufactured into this step. Worth a dedicated task later if it becomes load-bearing.
 - **2026-09-04** — Step 1 complete: full repo audit, `CLAUDE.md` created. All 7 phases
   code-complete; 68/68 tests pass after `npm install` (was not previously installed here).
   Confirmed no Render config exists in this repo. Confirmed Gemini key is encrypted-at-rest

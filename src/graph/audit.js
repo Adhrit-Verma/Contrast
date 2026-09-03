@@ -208,10 +208,11 @@ export function buildAuditGraph(deps) {
   async function report(state) {
     finishRun(db, state.runId);
     const dir = runDir(state.runId);
+    const catalogue = criteriaCatalogue(kb);
     const paths = {
-      json: writeJson(db, state.runId, join(dir, 'report.json')),
-      html: writeHtml(db, state.runId, join(dir, 'report.html')),
-      vpat: writeVpat(db, state.runId, join(dir, 'vpat-draft.md'), criteriaCatalogue(kb)),
+      json: writeJson(db, state.runId, join(dir, 'report.json'), catalogue),
+      html: writeHtml(db, state.runId, join(dir, 'report.html'), catalogue),
+      vpat: writeVpat(db, state.runId, join(dir, 'vpat-draft.md'), catalogue),
     };
     log(`report: ${Object.values(paths).join(', ')}`);
     return { reportPaths: paths };

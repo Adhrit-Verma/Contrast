@@ -174,9 +174,12 @@ switch (cmd) {
     const runId = need(args[0], USAGE);
     const database = db();
     const dir = runDir(runId);
-    console.log(writeJson(database, runId, join(dir, 'report.json')));
-    console.log(writeHtml(database, runId, join(dir, 'report.html')));
-    console.log(JSON.stringify(buildReport(database, runId).summary, null, 2));
+    // The catalogue is what lets the report say which criteria a machine could
+    // not check at all, rather than implying silence means conformance.
+    const catalogue = criteriaCatalogue(await loadKnowledge({ dir: cfg.ai?.knowledgeDir ?? 'knowledge' }));
+    console.log(writeJson(database, runId, join(dir, 'report.json'), catalogue));
+    console.log(writeHtml(database, runId, join(dir, 'report.html'), catalogue));
+    console.log(JSON.stringify(buildReport(database, runId, catalogue).summary, null, 2));
     break;
   }
 

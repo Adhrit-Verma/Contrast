@@ -5,7 +5,7 @@
 
 <p align="center">
   <code>Node 22+</code> · <code>no build step</code> · <code>no framework</code> ·
-  <code>68 tests</code> · <code>0 axe violations in its own UI</code>
+  <code>72 tests</code> · <code>0 axe violations in its own UI</code>
 </p>
 
 <p align="center"><sub>
@@ -293,9 +293,17 @@ stands behind. Drop more `.md` in and it is indexed on the next run; delete
 ## Testing
 
 ```bash
-npm test          # 68 tests
+npm test          # 72 tests
 npm run audit:ui  # the tool audits its own interface
+npm run accuracy  # precision/recall against the W3C ACT Rules corpus
 ```
+
+`npm run accuracy` scores the deterministic layer against
+[ACT Rules](https://act-rules.github.io/) test cases — free, pre-labelled fixtures with a known
+outcome per criterion — and writes every miss and false alarm to `runs/act/disagreements.json`.
+It measures axe-core, because that *is* the deterministic layer; a criterion at recall 0 means no
+automated rule covers it, which is precisely what the report's coverage section exists to say out
+loud.
 
 Tests concentrate where silent bugs hide: the normalizer and its dedupe, the rate limiter (virtual
 clock — no real waiting), model ranking, robots parsing, session encryption, the timeout helper,

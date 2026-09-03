@@ -345,8 +345,10 @@ export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
       if (url.pathname.startsWith('/report/')) {
         const runId = decodeURIComponent(url.pathname.slice('/report/'.length));
         const db = openDb(dbPath);
-        writeHtml(db, runId, join(runDir(runId), 'report.html'));
-        writeJson(db, runId, join(runDir(runId), 'report.json'));
+        const kb = await loadKnowledge({ dir: cfg.ai?.knowledgeDir ?? 'knowledge' });
+        const catalogue = criteriaCatalogue(kb);
+        writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue);
+        writeJson(db, runId, join(runDir(runId), 'report.json'), catalogue);
         return redirect(`/runs/${encodeURIComponent(runId)}/report.html`);
       }
 
