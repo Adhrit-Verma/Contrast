@@ -1,0 +1,24 @@
+services:
+  contrast:
+    build: .
+    image: contrast:latest
+    container_name: contrast
+    restart: unless-stopped
+    # Host networking — matches the compose pattern already in use on this VPS.
+    # src/ui/server.js binds 127.0.0.1 by design (not 0.0.0.0), so this is what
+    # lets `tailscale serve` reach it from the host's own loopback afterward.
+    # Ports are unused (and invalid) under host networking — do not add a
+    # `ports:` block here.
+    network_mode: host
+    volumes:
+      # Bind mounts, not named volumes: config.json stays hand-editable on the
+      # host exactly as the README promises, and sessions/runs survive
+      # `docker compose down` / image rebuilds.
+      - ./config.json:/app/config.json
+      - ./sessions:/app/sessions
+      - ./runs:/app/runs
+    environment:
+      # Optional: pre-seed the key instead of pasting it into Settings after
+      # first boot. Leave unset and use the dashboard's Settings tab instead —
+      # either way it ends up encrypted at rest, never in this file.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}

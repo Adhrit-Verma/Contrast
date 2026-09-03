@@ -95,6 +95,48 @@ in git history. Whatever deployment the checklist refers to was set up outside t
 nothing here to diagnose "why it's down" — that needs to be answered from the Render dashboard
 itself (or from wherever the deploy was actually configured), not from this codebase.
 
+## Deployment
+
+`Dockerfile` + `docker-compose.yml` + `.github/workflows/ci.yml` + `DEPLOY.md`, added 2026-09-04.
+No domain, no public TLS cert, and Basic Auth over plain HTTP was explicitly ruled out (sends
+credentials in the clear) — so access is **Tailscale Serve**, not the open internet:
+`src/ui/server.js`'s existing `127.0.0.1`-only bind (a deliberate safety property, left
+untouched) is bridged to the operator's private tailnet with a real, auto-issued HTTPS
+certificate. No password prompt; tailnet membership is the access control. Existing nginx on
+the VPS is never touched — Tailscale Serve binds the `tailscale0` interface, not 80/443.
+
+- **Base image**: `ghcr.io/puppeteer/puppeteer:25.10.0` — matched to the exact puppeteer version
+  in `package-lock.json` (**not** the `^25.10.0` range in `package.json`, which can drift ahead
+  of the image tag; check the lockfile before ever bumping this). Avoids hand-maintaining an
+  apt-get list of Chrome's shared-lib dependencies.
+- **Two real bugs caught by locally building and running the image before it ever reached a
+  VPS**: (1) the base image tag was first set to `24.10.0` from a misremembered version — the
+  lockfile actually has `25.10.0`, a full major ahead, needing a different bundled Chrome build
+  entirely (real error: "Could not find Chrome (ver. 152.0.7977.75)"). (2)
+  `ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true` was originally declared *after* `RUN npm ci` —
+  Docker `ENV` only affects instructions that come after it, so it had no effect during install.
+  Both fixed; verified by actually launching Puppeteer and the dashboard inside the built image.
+- **`network_mode: host`** (matching the pattern already used on this operator's VPS for another
+  project) — required because the app's `127.0.0.1` bind is inside the container's own network
+  namespace by default; only host networking makes "the container's loopback" and "the VPS's
+  loopback" the same address, which `tailscale serve` then needs to be true.
+- **`better-sqlite3`** (a transitive dependency of `@langchain/langgraph-checkpoint-sqlite`, used
+  by Phase 7's checkpointer — not by Contrast's own `db.js`, which uses `node:sqlite`) has its
+  native postinstall blocked by npm's install-scripts allowlist during `npm ci` in this image.
+  Verified empirically that it still works (a prebuilt binary ships in the published package for
+  this platform) rather than assuming it's broken from the warning text alone.
+- **CI** (`.github/workflows/ci.yml`): runs the full test suite inside the *same* pinned
+  puppeteer image on every push/PR (one verified Chrome environment, not two), then builds and
+  pushes to GHCR on `main`. Auto-deploying straight to the VPS from Actions was deliberately left
+  out — it would need an SSH private key stored as a repo secret, a real access-granting decision
+  that shouldn't be a quiet default. `DEPLOY.md` documents the manual `docker compose pull && up
+  -d` alternative and exactly what a `deploy` job would need if that changes later.
+- **What's actually done vs. pending**: the image is built and verified locally (Puppeteer
+  launches, the dashboard serves real HTML, `better-sqlite3` works) — none of the VPS-side steps
+  (installing Docker/Tailscale, `docker compose up -d`, `tailscale serve`, a real end-to-end scan
+  through the live URL) have run, since this session has no access to that VPS. `DEPLOY.md` is
+  the runbook for the operator to execute those and self-verify against its own "done condition."
+
 ## Step 4 — Gemini hardening + failure diagnosability
 
 - **Per-run cost cap**: `ai.perRunCap` (config default 300) stops a single audit — one
@@ -225,6 +267,15 @@ Recall against criteria that do have a running rule is far higher.
 
 *(newest first)*
 
+- **2026-09-04** — Step 5 in progress: added Dockerfile, docker-compose.yml (`network_mode:
+  host`), .github/workflows/ci.yml (test + build/push to GHCR), and DEPLOY.md (Tailscale Serve
+  runbook — no domain, no public TLS, Basic Auth over HTTP explicitly rejected as unsafe).
+  Built and verified the image locally: Puppeteer launches, dashboard serves real HTML,
+  better-sqlite3's native binary works despite an npm install-scripts warning. Caught and fixed
+  two real bugs pre-VPS: wrong base image tag (24.10.0 vs. the lockfile's actual 25.10.0) and an
+  ENV-declared-after-RUN ordering bug that silently disabled the Chromium-skip flag. VPS-side
+  steps (Docker/Tailscale install, first boot, live end-to-end scan) are documented but not yet
+  run — no access to that VPS from this session. 78/78 tests still pass (infra-only changes).
 - **2026-09-04** — Step 4 complete: added `ai.perRunCap` (default 300, alongside the existing
   daily cap), broadened retry/backoff from 429-only to all transient failures (5xx, dropped
   connections) via `isTransient()`, and closed two real structured-logging gaps — pages that

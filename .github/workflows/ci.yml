@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Same base image the Dockerfile ships on, pinned to the exact puppeteer
+    # version in package-lock.json — one verified Chrome environment instead
+    # of a second, separately-maintained "how CI installs Chrome" recipe.
+    container:
+      image: ghcr.io/puppeteer/puppeteer:25.10.0
+      # NOT --user root: the image's default pptruser is where Chrome is
+      # pre-installed (under its $HOME). Running as root here would make
+      # puppeteer-core look in /root/.cache/puppeteer and find nothing.
+    env:
+      # Same reasoning as the Dockerfile: skip re-downloading a Chrome that's
+      # already baked into this exact image.
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+
+  # Builds the same image `docker compose build` produces on the VPS and
+  # pushes it to GHCR. Deploying it is a manual `docker compose pull && up -d`
+  # on the VPS (see the deploy runbook) — auto-deploying straight from here
+  # would need an SSH private key stored as a repo secret, which is a real
+  # security decision to make deliberately, not a default to wire in quietly.
+  build-and-push:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

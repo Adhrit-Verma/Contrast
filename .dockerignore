@@ -1,0 +1,9 @@
+node_modules
+sessions
+runs
+*.sqlite
+.env
+config.json.bak
+config.json.tmp
+.git
+docs
