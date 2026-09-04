@@ -7,21 +7,21 @@ on:
 
 jobs:
   test:
+    # Deliberately NOT the ghcr.io/puppeteer/puppeteer container image: that
+    # needs a non-root user to find its pre-baked Chrome, but GitHub's own
+    # bind-mounted workspace needs root to be writable — and running Chrome
+    # as root without --no-sandbox hangs rather than failing cleanly (proven
+    # locally: the same container sat stuck on one test file for 20+ minutes
+    # with `--user root` before this was reverted). Puppeteer's own CI docs
+    # recommend exactly this instead: a plain runner, normal npm install.
+    # This is also what already works on every contributor's own machine —
+    # one fewer "only breaks in CI" environment to maintain.
     runs-on: ubuntu-latest
-    # Same base image the Dockerfile ships on, pinned to the exact puppeteer
-    # version in package-lock.json — one verified Chrome environment instead
-    # of a second, separately-maintained "how CI installs Chrome" recipe.
-    container:
-      image: ghcr.io/puppeteer/puppeteer:25.10.0
-      # NOT --user root: the image's default pptruser is where Chrome is
-      # pre-installed (under its $HOME). Running as root here would make
-      # puppeteer-core look in /root/.cache/puppeteer and find nothing.
-    env:
-      # Same reasoning as the Dockerfile: skip re-downloading a Chrome that's
-      # already baked into this exact image.
-      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - run: npm ci
       - run: npm test
 
