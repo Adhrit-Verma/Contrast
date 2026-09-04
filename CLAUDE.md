@@ -372,6 +372,20 @@ Recall against criteria that do have a running rule is far higher.
 
 *(newest first)*
 
+- **2026-09-04** — Fixed CI hanging indefinitely on every push. Root cause: the `test` job ran
+  inside `ghcr.io/puppeteer/puppeteer` with `--user root` (needed so GitHub's bind-mounted
+  workspace was writable), but Chrome refuses to run its own sandbox as root without
+  `--no-sandbox` — it hangs rather than failing cleanly. Confirmed locally by reproducing the
+  exact container + flags and watching `test/blocked.test.js` sit stuck on the same PID for 20+
+  minutes. Fixed by dropping the custom container entirely: `.github/workflows/ci.yml`'s `test`
+  job now runs on a plain `ubuntu-latest` runner with a normal `npm ci`/`npm test`, matching
+  Puppeteer's own CI guidance and what already works on every contributor's machine. Also
+  redesigned the public landing page from user feedback (carousel arrows losing to hovered
+  cards — a real CSS paint-order bug, not a guess; a bento-grid span miscalculation; a
+  low-impact visitor counter) — verified with axe-core and Puppeteer screenshots at 5 widths
+  before shipping, informed by researched 2026 SaaS landing-page and WCAG typography guidance
+  rather than eyeballed.
+
 - **2026-09-04** — Step 8 complete: ran real deterministic scans against 20 major Indian
   company sites, published 8 usable writeups + a summary in `docs/audits/`. 11 sites correctly
   triggered the bot-protection safety stop; 1 (IndiGo) returned a 200-status Akamai failover
