@@ -6,4 +6,8 @@ runs
 config.json.bak
 config.json.tmp
 .git
-docs
+# Only the README's illustration assets, not docs/audits or docs/launch —
+# the public server reads those .md files at runtime (src/public/server.js).
+docs/*.gif
+docs/*.png
+docs/*.svg
