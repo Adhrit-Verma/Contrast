@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Contrast — AI accessibility audits, verified</title>
 <meta name="description" content="Contrast crawls your site, measures what a machine can prove, asks AI about what machines are bad at, writes fixes, and re-verifies every one before calling it fixed.">
-<!-- Same tokens as scan.html and the admin dashboard's tokens.css — three
-     surfaces, one brand. Self-contained on purpose: this is a small separate
-     app from the admin dashboard, not worth a cross-process asset dependency
-     for three shared colour values. -->
+<!-- Design system for the public site (landing + scan + audits) — same brand
+     tokens as the admin dashboard's tokens.css, copied inline on purpose:
+     this is a separate small app, not worth a cross-process asset dependency
+     for a handful of shared values. Scale and spacing below follow a
+     deliberate ratio (type: 1.25, space: 4px base) so nothing is an
+     eyeballed one-off. -->
 <style>
   :root {
-    --canvas: #faf9f5; --surface: #ffffff; --surface-2: #f5f0e8; --line: #e6dfd8; --line-strong: #d5cec2;
+    /* ---- colour: identical values to tokens.css, WCAG AA verified there ---- */
+    --canvas: #faf9f5; --surface: #ffffff; --surface-2: #f5f0e8; --surface-3: #efe9de;
+    --line: #e6dfd8; --line-strong: #d5cec2;
     --text: #141413; --text-2: #3d3d3a; --text-3: #6c6a64;
     --accent: #cc785c; --accent-text: #a25439; --accent-soft: #f7ece6; --on-accent: #141413;
     --ok: #2a7346; --ok-soft: #e6f2ea;
@@ -19,87 +23,177 @@
     --font-display: "Tiempos Headline", "Iowan Old Style", Palatino, Georgia, serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
     --ease: cubic-bezier(.2, .8, .2, 1);
+    --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+    /* ---- type scale, ~1.25 ratio ---- */
+    --fs-sm: 14px; --fs-md: 16px; --fs-lg: 19px; --fs-xl: 24px;
+    --fs-2xl: 30px; --fs-3xl: 40px; --fs-4xl: 52px;
+    /* ---- space scale, 4px base ---- */
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+    --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+    --shadow-1: 0 1px 2px rgba(20,20,19,.05), 0 1px 1px rgba(20,20,19,.04);
+    --shadow-2: 0 2px 6px rgba(20,20,19,.05), 0 10px 26px rgba(20,20,19,.08);
+    --shadow-3: 0 4px 10px rgba(20,20,19,.06), 0 20px 48px rgba(20,20,19,.12);
   }
   * { box-sizing: border-box }
-  body { margin: 0; background: var(--canvas); color: var(--text); font: 15px/1.6 var(--font-ui); -webkit-font-smoothing: antialiased }
+  html { scroll-behavior: smooth }
+  body { margin: 0; background: var(--canvas); color: var(--text); font: var(--fs-md)/1.6 var(--font-ui); -webkit-font-smoothing: antialiased }
   a { color: var(--accent-text) }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px }
+  .measure { max-width: 640px; margin-left: auto; margin-right: auto } /* ~72ch reading width */
 
-  /* ------------------------------------------------------------- nav */
-  nav.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px }
-  .brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 17px; color: var(--text); text-decoration: none }
-  .brand .mark { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; flex: none }
-  .brand .mark svg { width: 14px; height: 14px }
-  nav.top a.tool { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 14px }
-  nav.top a.tool:hover { border-color: var(--accent) }
-
-  /* ------------------------------------------------------------- hero
-     Compact by design: headline + subhead + CTA must clear a phone's fold
-     without scrolling — that's a build condition for this page, not a nicety. */
-  .hero { text-align: center; padding: 28px 24px 40px }
-  .hero h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 6vw, 44px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.01em }
-  .hero p { color: var(--text-2); max-width: 540px; margin: 0 auto 24px; font-size: 16px }
-  .cta {
-    display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 600; font-size: 16px;
-    background: var(--accent); color: var(--on-accent); text-decoration: none;
-    border-radius: 10px; padding: 14px 26px; box-shadow: 0 1px 2px rgba(20,20,19,.06);
-    transition: transform .12s var(--ease), background .12s var(--ease);
+  /* ================================================================= nav */
+  nav.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--sp-4) var(--sp-6); max-width: 1120px; margin: 0 auto;
+    position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--canvas) 85%, transparent);
+    backdrop-filter: blur(10px); border-bottom: 1px solid transparent;
   }
-  .cta:hover { background: var(--accent-text); color: #fff; transform: translateY(-1px) }
-  .cta-note { display: block; margin-top: 10px; font-size: 13px; color: var(--text-3) }
-  .visits { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 12.5px; color: var(--text-3) }
-  .visits .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok, #2a7346); flex: none }
-  .visits b { color: var(--text-2); font-family: var(--font-mono); font-variant-numeric: tabular-nums }
+  .brand { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text); text-decoration: none }
+  .brand .mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; flex: none }
+  .brand .mark svg { width: 15px; height: 15px }
+  nav.top a.tool {
+    font-size: var(--fs-sm); font-weight: 600; color: var(--text); text-decoration: none;
+    border: 1px solid var(--line-strong); border-radius: 9px; padding: 9px 16px; background: var(--surface);
+    transition: border-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  nav.top a.tool:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-1) }
 
-  /* ------------------------------------------------------------ audits
-     A native scroll-snap rail of real links — no ARIA-tablist machinery,
-     just anchors a mouse can drag-scroll and a keyboard can Tab through. */
-  .car-wrap { position: relative; max-width: 880px; margin: 0 auto }
-  .carousel { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x proximity; list-style: none; margin: 0; padding: 4px 4px 14px; scrollbar-width: thin }
-  .carousel li { scroll-snap-align: start; flex: 0 0 230px }
-  .carousel a { display: block; height: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; text-decoration: none; color: var(--text); transition: border-color .12s var(--ease), transform .12s var(--ease) }
-  .carousel a:hover { border-color: var(--accent); transform: translateY(-2px) }
-  .carousel .site { font-family: var(--font-display); font-size: 17px; display: block; margin-bottom: 2px }
-  .carousel .count { font-family: var(--font-mono); font-size: 12px; color: var(--accent-text); font-weight: 700 }
-  .carousel .issue { display: block; margin-top: 8px; font-size: 13px; color: var(--text-2); line-height: 1.4 }
-  .car-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; font-size: 16px; line-height: 1; color: var(--text) }
-  .car-btn:hover { border-color: var(--accent) }
-  .car-btn.prev { left: -8px } .car-btn.next { right: -8px }
-  @media (max-width: 640px) { .car-btn { display: none } }
+  /* ================================================================ hero */
+  .hero { text-align: center; padding: var(--sp-8) var(--sp-5) var(--sp-7); max-width: 880px; margin: 0 auto }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 12px;
+    font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text);
+    background: var(--accent-soft); padding: 6px 14px; border-radius: 999px; margin-bottom: var(--sp-5);
+  }
+  .eyebrow .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 400; font-size: clamp(32px, 5.4vw, var(--fs-4xl));
+    line-height: 1.12; margin: 0 0 var(--sp-4); letter-spacing: -.015em;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent-text) }
+  .hero > p { color: var(--text-2); max-width: 560px; margin: 0 auto var(--sp-6); font-size: var(--fs-lg); line-height: 1.55 }
+  .cta-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-4) }
+  .cta {
+    display: inline-flex; align-items: center; gap: var(--sp-2); font: inherit; font-weight: 700; font-size: var(--fs-md);
+    background: var(--accent); color: var(--on-accent); text-decoration: none;
+    border-radius: 12px; padding: 15px 28px; box-shadow: var(--shadow-2);
+    transition: transform .15s var(--ease-spring), background .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .cta:hover { background: var(--accent-text); color: #fff; transform: translateY(-2px); box-shadow: var(--shadow-3) }
+  .cta:active { transform: translateY(0) scale(.98) }
+  .ghost-link { font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: 2px }
+  .ghost-link:hover { color: var(--accent-text); border-color: var(--accent) }
+  .cta-note { display: block; margin-top: var(--sp-3); font-size: 13px; color: var(--text-3) }
 
-  /* ------------------------------------------------------- certainty demo
-     Show the differentiator, don't just claim it: the same MEASURED / AI
-     tagging the real product reports with, on two lines of real-shaped copy. */
-  .demo { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 0 auto 8px; max-width: 560px; text-align: left; overflow: hidden }
-  .demo-row { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-left: 3px solid var(--text-2) }
-  .demo-row.ai { border-left-style: dotted; border-left-width: 4px; border-left-color: var(--accent) }
+  /* Visitor stat: a real callout, not a footnote. */
+  .visits {
+    display: inline-flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-6);
+    font-size: 13px; color: var(--text-2); background: var(--surface); border: 1px solid var(--line);
+    padding: 9px 18px 9px 14px; border-radius: 999px; box-shadow: var(--shadow-1);
+  }
+  .visits .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; box-shadow: 0 0 0 3px var(--ok-soft) }
+  .visits b { color: var(--text); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 14px }
+
+  /* ============================================================ sections */
+  section { padding: var(--sp-8) var(--sp-5) }
+  section.tint { background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+  .section-inner { max-width: 1080px; margin: 0 auto }
+  .section-head { text-align: center; max-width: 620px; margin: 0 auto var(--sp-7) }
+  .section-head h2 { font-family: var(--font-display); font-weight: 400; font-size: var(--fs-2xl); margin: 0 0 var(--sp-2); letter-spacing: -.01em }
+  .section-head p { color: var(--text-2); margin: 0; font-size: var(--fs-md) }
+
+  /* ---------------------------------------------------------- audits rail
+     Native scroll, no ARIA-tablist machinery — plain links a mouse can drag
+     and a keyboard can Tab through. Arrows get z-index so a hovered card
+     (which lifts and gains a shadow) never paints over them regardless of
+     DOM order — the actual bug behind "hovering hides the arrows". */
+  .car-wrap { position: relative; max-width: 1080px; margin: 0 auto; padding: 0 var(--sp-7) }
+  .carousel {
+    display: flex; gap: var(--sp-4); overflow-x: auto; scroll-snap-type: x proximity;
+    list-style: none; margin: 0; padding: var(--sp-1) var(--sp-1) var(--sp-4); scrollbar-width: thin;
+  }
+  .carousel li { scroll-snap-align: start; flex: 0 0 248px }
+  .carousel a {
+    display: flex; flex-direction: column; height: 100%; min-height: 148px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 14px; padding: var(--sp-5); text-decoration: none; color: var(--text);
+    transition: border-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .carousel a:hover, .carousel a:focus-visible { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow-2) }
+  .carousel .site { font-family: var(--font-display); font-size: var(--fs-lg); display: block; margin-bottom: 4px }
+  .carousel .count { font-family: var(--font-mono); font-size: 12px; color: var(--accent-text); font-weight: 700; letter-spacing: .01em }
+  .carousel .issue { display: block; margin-top: var(--sp-3); font-size: 13.5px; color: var(--text-2); line-height: 1.45 }
+  .car-btn {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 40px; height: 40px;
+    border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer;
+    font-size: 18px; line-height: 1; color: var(--text); box-shadow: var(--shadow-2);
+    transition: border-color .15s var(--ease), transform .15s var(--ease);
+  }
+  .car-btn:hover { border-color: var(--accent); transform: translateY(-50%) scale(1.06) }
+  .car-btn.prev { left: 0 } .car-btn.next { right: 0 }
+  /* Edge fade hints there's more to scroll, without a hard visual cutoff. */
+  .car-wrap::before, .car-wrap::after {
+    content: ""; position: absolute; top: 0; bottom: var(--sp-4); width: 56px; z-index: 2; pointer-events: none;
+  }
+  .car-wrap::before { left: var(--sp-7); background: linear-gradient(90deg, var(--canvas), transparent) }
+  .car-wrap::after { right: var(--sp-7); background: linear-gradient(270deg, var(--canvas), transparent) }
+  @media (max-width: 700px) { .car-btn { display: none } .car-wrap { padding: 0 } .car-wrap::before, .car-wrap::after { display: none } }
+  .audits-more { text-align: center; margin-top: var(--sp-2) }
+  .audits-more a { font-size: 13.5px; font-weight: 600 }
+
+  /* ------------------------------------------------------- certainty demo */
+  .demo {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--sp-1);
+    margin: 0 auto var(--sp-6); max-width: 600px; text-align: left; overflow: hidden; box-shadow: var(--shadow-1);
+  }
+  .demo-row { display: flex; gap: var(--sp-3); align-items: flex-start; padding: var(--sp-4) var(--sp-4) }
+  .demo-row.ai { border-left: 4px dotted var(--accent) }
+  .demo-row:not(.ai) { border-left: 3px solid var(--text-2) }
   .demo-row + .demo-row { border-top: 1px solid var(--line) }
-  .tag { flex: none; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .03em; padding: 3px 7px; border-radius: 5px; margin-top: 1px }
+  .tag { flex: none; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: .03em; padding: 4px 8px; border-radius: 6px; margin-top: 1px }
   .tag.det { background: var(--surface-2); color: var(--text-2) }
   .tag.ai { background: var(--accent-soft); color: var(--accent-text) }
-  .demo-row span.desc { font-size: 13.5px; color: var(--text-2) }
-
-  /* ---------------------------------------------------------- sections */
-  section { padding: 48px 24px }
-  section h2 { font-family: var(--font-display); font-weight: 400; font-size: 24px; text-align: center; margin: 0 0 32px }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 880px; margin: 0 auto }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px }
-  .card b { display: block; font-family: var(--font-display); font-size: 17px; font-weight: 400; margin-bottom: 6px }
-  .card p { margin: 0; color: var(--text-2); font-size: 14px }
-
+  .demo-row .desc { font-size: 14.5px; color: var(--text-2); line-height: 1.5 }
   .diff { max-width: 640px; margin: 0 auto; text-align: center }
-  .diff p { color: var(--text-2); font-size: 15.5px }
-  .diff .callout { display: inline-block; margin-top: 8px; background: var(--ok-soft); color: var(--ok); font-family: var(--font-mono); font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px }
+  .diff p { color: var(--text-2); font-size: var(--fs-md); line-height: 1.6 }
+  .diff .callout {
+    display: inline-flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); background: var(--ok-soft);
+    color: var(--ok); font-family: var(--font-mono); font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px;
+  }
 
+  /* ------------------------------------------------------- bento feature grid
+     Not four identical boxes: "Verified" is the actual differentiator, so it
+     gets the visual weight — a wider card, not the same size as its siblings. */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-4) }
+  .bento .card { grid-column: span 3 }
+  .bento .card.wide { grid-column: span 6 }
+  @media (min-width: 860px) {
+    .bento .card { grid-column: span 3 }
+    .bento .card.wide { grid-column: span 6 }
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: var(--sp-6);
+    transition: border-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .card:hover { border-color: var(--line-strong); transform: translateY(-2px); box-shadow: var(--shadow-2) }
+  .card .icon { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--accent-text); letter-spacing: .04em; text-transform: uppercase; margin-bottom: var(--sp-3); display: block }
+  .card b { display: block; font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 400; margin-bottom: var(--sp-2) }
+  .card p { margin: 0; color: var(--text-2); font-size: var(--fs-md); line-height: 1.55 }
+  .card.wide p { max-width: 520px }
+
+  /* ------------------------------------------------------------- pricing */
   .pricing { text-align: center }
-  .pricing .badge { display: inline-block; background: var(--accent-soft); color: var(--accent-text); font-weight: 600; font-size: 13px; padding: 6px 14px; border-radius: 999px; margin-bottom: 12px }
-  .pricing p { color: var(--text-2); max-width: 480px; margin: 0 auto 24px }
+  .pricing .badge { display: inline-block; background: var(--accent-soft); color: var(--accent-text); font-weight: 700; font-size: 13px; padding: 7px 16px; border-radius: 999px; margin-bottom: var(--sp-4) }
+  .pricing h2 { margin-bottom: var(--sp-3) }
+  .pricing > p { color: var(--text-2); max-width: 480px; margin: 0 auto var(--sp-6); font-size: var(--fs-md) }
 
-  footer { text-align: center; padding: 40px 24px 56px; color: var(--text-3); font-size: 13px }
+  footer { text-align: center; padding: var(--sp-7) var(--sp-5) var(--sp-8); color: var(--text-3); font-size: 13px; line-height: 1.7 }
+  footer .measure { max-width: 520px }
   footer a { color: var(--text-3); text-decoration: underline }
 
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto }
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important }
+  }
 </style>
 </head>
 <body>
@@ -114,18 +208,26 @@
 
 <main>
 <header class="hero">
-  <h1>Accessibility audits an AI can propose, but never claims done on its own.</h1>
+  <span class="eyebrow"><span class="pulse" aria-hidden="true"></span> Free during beta — no signup</span>
+  <h1>Accessibility audits an AI can <em>propose</em> — never one it calls <em>done</em> on its own.</h1>
   <p>Contrast crawls your site, measures everything a machine can prove, asks AI about the
     things machines are bad at, writes fixes — then re-tests every one in a fresh browser
     before it's allowed to call anything fixed.</p>
-  <a class="cta" href="/scan">Scan your site free →</a>
+  <div class="cta-row">
+    <a class="cta" href="/scan">Scan your site free →</a>
+    <a class="ghost-link" href="#audits">See a real audit ↓</a>
+  </div>
   <span class="cta-note">No signup. Takes about a minute.</span>
-  <span class="visits" id="visits" hidden><span class="dot" aria-hidden="true"></span> <b id="visits-n">0</b>&nbsp;<span id="visits-label">unique visitors</span> so far</span>
+  <div>
+    <span class="visits" id="visits" hidden><span class="dot" aria-hidden="true"></span><b id="visits-n">0</b><span id="visits-label">&nbsp;unique visitors so far</span></span>
+  </div>
 </header>
 
-<section aria-label="Real audits" id="audits">
-  <h2>Real audits, not hypotheticals</h2>
-  <p style="text-align:center;color:var(--text-2);max-width:560px;margin:-16px auto 24px">We ran Contrast against 8 major Indian sites — no accounts, no logins, just the public homepage. Here's what a machine could prove.</p>
+<section aria-label="Real audits" id="audits" class="tint">
+  <div class="section-head">
+    <h2>Real audits, not hypotheticals</h2>
+    <p>We ran Contrast against 8 major Indian sites — no accounts, no logins, just the public homepage. Here's what a machine could prove.</p>
+  </div>
   <div class="car-wrap">
     <button class="car-btn prev" id="car-prev" aria-label="Scroll audits left" type="button">‹</button>
     <ul class="carousel" id="carousel" aria-label="Site audit summaries">
@@ -140,64 +242,75 @@
     </ul>
     <button class="car-btn next" id="car-next" aria-label="Scroll audits right" type="button">›</button>
   </div>
-  <p style="text-align:center;margin-top:4px"><a href="/audits/summary" style="font-size:13.5px">Read the full summary, including 11 sites that refused to be scanned →</a></p>
+  <p class="audits-more"><a href="/audits/summary">Read the full summary, including 11 sites that refused to be scanned →</a></p>
 </section>
 
 <section aria-label="What makes it different">
-  <div class="demo" aria-hidden="true">
-    <div class="demo-row">
-      <span class="tag det">MEASURED</span>
-      <span class="desc">Button has no accessible name — axe-core, confidence 1.0</span>
+  <div class="section-inner">
+    <div class="demo" aria-hidden="true">
+      <div class="demo-row">
+        <span class="tag det">MEASURED</span>
+        <span class="desc">Button has no accessible name — axe-core, confidence 1.0</span>
+      </div>
+      <div class="demo-row ai">
+        <span class="tag ai">ASSESSED</span>
+        <span class="desc">Alt text says "image1.jpg" — needs your confirmation</span>
+      </div>
     </div>
-    <div class="demo-row ai">
-      <span class="tag ai">ASSESSED</span>
-      <span class="desc">Alt text says "image1.jpg" — needs your confirmation</span>
+    <div class="diff">
+      <p>Most scanners report everything the same way and let you sort out what's real. Contrast
+        never blurs the line between a measured fact and a model's judgment call — and a fix that
+        hasn't been re-verified is labelled a suggestion, not a fix.</p>
+      <span class="callout">✓ Every fix is injected into a fresh page and re-scanned, automatically</span>
     </div>
-  </div>
-  <div class="diff">
-    <p>Most scanners report everything the same way and let you sort out what's real. Contrast
-      never blurs the line between a measured fact and a model's judgment call — and a fix that
-      hasn't been re-verified is labelled a suggestion, not a fix.</p>
-    <span class="callout">Every fix is injected into a fresh page and re-scanned, automatically</span>
   </div>
 </section>
 
-<section aria-label="What you get">
-  <h2>What you get</h2>
-  <div class="grid">
-    <div class="card"><b>Measured</b><p>axe-core, the Chrome accessibility tree, a real keyboard trace, computed contrast — not declared CSS.</p></div>
-    <div class="card"><b>Assessed</b><p>Alt-text quality, link and heading semantics, form errors, reading order — the calls machines get wrong.</p></div>
-    <div class="card"><b>Fixed</b><p>Corrected HTML/ARIA/CSS grounded in WCAG text and your own house patterns.</p></div>
-    <div class="card"><b>Verified</b><p>Every fix re-tested in a fresh browser: resolved, and no new violations introduced.</p></div>
+<section aria-label="What you get" class="tint">
+  <div class="section-inner">
+    <div class="section-head"><h2>What you get</h2></div>
+    <div class="bento">
+      <div class="card"><span class="icon">01 · measured</span><b>Measured</b><p>axe-core, the Chrome accessibility tree, a real keyboard trace, computed contrast — not declared CSS.</p></div>
+      <div class="card"><span class="icon">02 · assessed</span><b>Assessed</b><p>Alt-text quality, link and heading semantics, form errors, reading order — the calls machines get wrong.</p></div>
+      <div class="card wide"><span class="icon">03 · fixed &amp; verified</span><b>Fixed, then proven — not just fixed</b><p>Corrected HTML/ARIA/CSS grounded in WCAG text and your own house patterns, injected into a fresh browser and re-scanned. Resolved and no new violations introduced — or it's labelled a suggestion, not a fix.</p></div>
+    </div>
   </div>
 </section>
 
 <section class="pricing" aria-label="Pricing">
   <span class="badge">Free during beta</span>
-  <h2 style="margin-bottom:8px">No pricing yet — because we're still earning it</h2>
-  <p>The free scanner above runs the full deterministic pipeline: axe-core, the accessibility
+  <h2>No pricing yet — because we're still earning it</h2>
+  <p class="measure">The free scanner runs the full deterministic pipeline: axe-core, the accessibility
     tree, and a real keyboard trace, on up to five pages. No credit card, no account.</p>
   <a class="cta" href="/scan">Scan your site free →</a>
 </section>
 </main>
 
 <footer>
-  Automated testing catches roughly 30–40% of WCAG issues. Nothing Contrast produces is a claim
-  of conformance — every report says so on the page, not in a footnote.<br>
+  <p class="measure">Automated testing catches roughly 30–40% of WCAG issues. Nothing Contrast produces is a claim
+  of conformance — every report says so on the page, not in a footnote.</p>
   <a href="/scan">Free scanner</a>
 </footer>
 
 <script>
 // Visitor count: fetch on load, animate the digits in, then poll so the
 // number reflects other people visiting concurrently without a page reload.
+// Copy shifts tone at low counts rather than showing a bare, unimpressive "0".
 (function () {
   var el = document.getElementById('visits');
   var n = document.getElementById('visits-n');
   var label = document.getElementById('visits-label');
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function labelFor(target) {
+    if (target < 1) return ' be the first to try it';
+    if (target === 1) return ' unique visitor so far';
+    return ' unique visitors so far';
+  }
   function paint(target) {
     el.hidden = false;
-    label.textContent = target === 1 ? 'unique visitor' : 'unique visitors';
+    label.textContent = labelFor(target);
+    if (target < 1) { n.style.display = 'none'; return; }
+    n.style.display = '';
     if (reduced) { n.textContent = target; return; }
     var from = Number(n.textContent) || 0;
     if (from === target) return;
@@ -223,7 +336,7 @@
   var prev = document.getElementById('car-prev');
   var next = document.getElementById('car-next');
   if (!rail) return;
-  var step = () => (rail.firstElementChild ? rail.firstElementChild.getBoundingClientRect().width + 14 : 240);
+  var step = () => (rail.firstElementChild ? rail.firstElementChild.getBoundingClientRect().width + 16 : 260);
   prev.addEventListener('click', function () { rail.scrollBy({ left: -step() * 2, behavior: 'smooth' }); });
   next.addEventListener('click', function () { rail.scrollBy({ left: step() * 2, behavior: 'smooth' }); });
 })();
