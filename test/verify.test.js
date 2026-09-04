@@ -31,7 +31,10 @@ const finding = {
 };
 
 async function withBrowser(fn) {
-  const browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox: recent Ubuntu GitHub-runner images restrict unprivileged
+  // user namespaces (AppArmor), which breaks Chrome's own sandbox for any
+  // user, not just root. Safe here — this only ever loads a local file:// fixture.
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
   const ctx = {
     browser,
     newPage: async () => {

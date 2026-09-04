@@ -17,7 +17,11 @@ const baseCrawlCfg = {
 };
 
 async function withPage(fn) {
-  const browser = await puppeteer.launch({ headless: true });
+  // --no-sandbox: recent Ubuntu GitHub-runner images restrict unprivileged
+  // user namespaces (AppArmor), which breaks Chrome's own sandbox for any
+  // user, not just root. Safe here — these tests only ever load a local
+  // fixture server or a guaranteed-dead port, never untrusted content.
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
   const page = await browser.newPage();
   await attachReadOnlyGuard(page, baseCrawlCfg);
   const ctx = { page, newPage: async () => { const p = await browser.newPage(); await attachReadOnlyGuard(p, baseCrawlCfg); return p; } };
