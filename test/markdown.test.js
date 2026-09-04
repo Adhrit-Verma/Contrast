@@ -23,6 +23,23 @@ test('bullet lists open and close cleanly', () => {
   assert.match(html, /<p>after<\/p>/);
 });
 
+test('GFM tables render as real <table> markup, not raw pipe text', () => {
+  const md = '| Outcome | Count |\n|---|---|\n| Scanned | 8 |\n| Blocked | 11 |\n\nafter';
+  const html = markdownToHtml(md);
+  assert.match(html, /<table>/);
+  assert.match(html, /<th>Outcome<\/th><th>Count<\/th>/);
+  assert.match(html, /<td>Scanned<\/td><td>8<\/td>/);
+  assert.match(html, /<td>Blocked<\/td><td>11<\/td>/);
+  assert.doesNotMatch(html, /\|---\|/, 'the separator row must never leak into the output');
+  assert.match(html, /<p>after<\/p>/, 'content after the table still parses normally');
+});
+
+test('a line that merely contains a pipe is not mistaken for a table', () => {
+  const html = markdownToHtml('Cost: $5 | $10 depending on plan');
+  assert.doesNotMatch(html, /<table>/);
+  assert.match(html, /<p>Cost: \$5 \| \$10 depending on plan<\/p>/);
+});
+
 test('raw HTML-looking text is escaped, not injected', () => {
   const html = markdownToHtml('<img src=x onerror=alert(1)>');
   assert.doesNotMatch(html, /<img/);

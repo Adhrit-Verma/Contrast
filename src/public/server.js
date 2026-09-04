@@ -26,24 +26,81 @@ const VALID_ID = /^[\w:.-]+$/; // blocks `/`, `..`, null bytes — anything path
 const VALID_SLUG = /^[a-z0-9-]+$/;
 
 const AUDIT_PAGE_STYLE = `
-  :root { --canvas:#faf9f5; --surface:#fff; --line:#e6dfd8; --line-strong:#d5cec2; --text:#141413; --text-2:#3d3d3a; --text-3:#6c6a64; --accent:#cc785c; --accent-text:#a25439; }
+  :root {
+    --canvas:#faf9f5; --surface:#fff; --surface-2:#f5f0e8; --line:#e6dfd8; --line-strong:#d5cec2;
+    --text:#141413; --text-2:#3d3d3a; --text-3:#6c6a64; --accent:#cc785c; --accent-text:#a25439; --accent-soft:#f7ece6;
+    --sev-critical-bg:#fdecea; --sev-critical-fg:#9b1c14; --sev-serious-bg:#fbeee0; --sev-serious-fg:#8a4200;
+    --sev-moderate-bg:#f8f1d8; --sev-moderate-fg:#6b5300; --sev-minor-bg:#f0efec; --sev-minor-fg:#4a4a4a;
+    --font-display:"Tiempos Headline","Iowan Old Style",Georgia,serif;
+    --font-mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    --shadow-1: 0 1px 2px rgba(20,20,19,.05), 0 1px 1px rgba(20,20,19,.04);
+  }
   * { box-sizing: border-box }
   body { margin:0; background:var(--canvas); color:var(--text); font:15px/1.65 Inter,-apple-system,"Segoe UI",sans-serif }
-  main { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px }
-  a.back { color:var(--text-3); font-size:13px; text-decoration:none }
-  a.back:hover { color:var(--accent-text) }
+  nav.top { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; max-width:760px; margin:0 auto }
+  .brand { display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-size:16px; color:var(--text); text-decoration:none }
+  .brand .mark { width:22px; height:22px; border-radius:6px; background:var(--accent); display:grid; place-items:center; flex:none }
+  .brand .mark svg { width:13px; height:13px }
+  nav.top a.tool { font-size:13px; font-weight:600; color:var(--text); text-decoration:none; border:1px solid var(--line-strong); border-radius:8px; padding:7px 13px; background:var(--surface) }
+  nav.top a.tool:hover { border-color:var(--accent) }
+  main { max-width: 700px; margin: 0 auto; padding: 8px 24px 80px }
   a { color: var(--accent-text) }
-  h1 { font-family:"Tiempos Headline","Iowan Old Style",Georgia,serif; font-weight:400; font-size:30px; margin:20px 0 6px; letter-spacing:-.01em }
-  h2 { font-family:"Tiempos Headline","Iowan Old Style",Georgia,serif; font-weight:400; font-size:20px; margin:28px 0 8px }
-  h3 { font-size:15px; margin:20px 0 6px }
-  p { color: var(--text-2); margin: 8px 0 }
-  code { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; font-size: .9em; background: #f5f0e8; padding: 1px 5px; border-radius: 4px }
-  pre { background: #141413; color: #f5f0e8; padding: 14px 16px; border-radius: 8px; overflow-x: auto }
-  pre code { background: none; padding: 0; color: inherit }
-  ul { color: var(--text-2); padding-left: 20px }
+  h1 { font-family:var(--font-display); font-weight:400; font-size:clamp(26px,4vw,34px); margin:8px 0 14px; letter-spacing:-.01em; line-height:1.2 }
+  h2 { font-family:var(--font-display); font-weight:400; font-size:21px; margin:40px 0 10px; padding-top:20px; border-top:1px solid var(--line) }
+  h1 + p { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px 16px; font-size:13.5px; color:var(--text-2); margin:0 0 16px; box-shadow:var(--shadow-1) }
+  h1 + p b { color:var(--text) }
+  /* Methodology paragraph: the 2nd <p>, right after the metadata bar */
+  h1 + p + p { color:var(--text-3); font-size:13.5px; line-height:1.6; margin:0 0 8px }
+  h3 { font-size:16px; font-weight:700; margin:26px 0 4px; padding-left:12px; border-left:3px solid var(--text-3); display:flex; flex-wrap:wrap; align-items:baseline; gap:10px }
+  h3.sev-critical { border-left-color:var(--sev-critical-fg) }
+  h3.sev-serious { border-left-color:var(--sev-serious-fg) }
+  h3.sev-moderate { border-left-color:var(--sev-moderate-fg) }
+  h3.sev-minor { border-left-color:var(--sev-minor-fg) }
+  .h-meta { display:inline-flex; gap:6px; flex-wrap:wrap; font-weight:400 }
+  .h-meta-plain { font-weight:400; color:var(--text-3); font-size:13px }
+  .badge { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:.02em }
+  .badge.sev-critical { background:var(--sev-critical-bg); color:var(--sev-critical-fg) }
+  .badge.sev-serious { background:var(--sev-serious-bg); color:var(--sev-serious-fg) }
+  .badge.sev-moderate { background:var(--sev-moderate-bg); color:var(--sev-moderate-fg) }
+  .badge.sev-minor { background:var(--sev-minor-bg); color:var(--sev-minor-fg) }
+  .badge.wcag { background:var(--accent-soft); color:var(--accent-text) }
+  p { color: var(--text-2); margin: 8px 0 12px; padding-left:12px }
+  code { font-family: var(--font-mono); font-size: .88em; background: var(--surface-2); color:var(--accent-text); padding: 1px 6px; border-radius: 4px; word-break: break-word }
+  pre {
+    background: #141413; color: #f5f0e8; padding: 14px 16px; border-radius: 10px;
+    margin: 8px 0 12px 12px; max-width: calc(100% - 12px);
+    white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;
+  }
+  pre code { background: none; padding: 0; color: inherit; word-break: normal }
+  ul { color: var(--text-2); padding-left: 32px; margin: 8px 0 12px }
   li { margin: 4px 0 }
+  .table-wrap { overflow-x: auto; margin: 8px 0 12px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--line) }
+  th { background: var(--surface-2); font-weight: 700; color: var(--text) }
+  td { color: var(--text-2) }
+  tr:last-child td { border-bottom: none }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 `;
+
+// Turns "### Some finding — 3 instances (critical, WCAG 1.1.1, Level A)" into a
+// coloured left border plus real badge pills instead of parenthetical text a
+// reader has to parse themselves. Domain-specific to these writeups' own
+// heading shape, so it lives here rather than in the generic markdown.js.
+function enhanceAuditHtml(html) {
+  return html.replace(/<h3>(.*?)\(([^)]*)\)<\/h3>/g, (_, title, meta) => {
+    const sev = /\b(critical|serious|moderate|minor)\b/i.exec(meta)?.[1]?.toLowerCase();
+    const wcag = /WCAG\s+([\d.]+)/i.exec(meta)?.[1];
+    const level = /Level\s+([A-Z]+)/i.exec(meta)?.[1];
+    const badges = [
+      sev && `<span class="badge sev-${sev}">${sev}</span>`,
+      wcag && `<span class="badge wcag">WCAG ${wcag}${level ? ' · ' + level : ''}</span>`,
+    ].filter(Boolean).join('');
+    const cls = sev ? ` class="sev-${sev}"` : '';
+    const tail = badges ? `<span class="h-meta">${badges}</span>` : `<span class="h-meta-plain">(${meta})</span>`;
+    return `<h3${cls}>${title.trim()}${tail}</h3>`;
+  });
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -188,7 +245,13 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
         const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title} — Contrast</title><style>${AUDIT_PAGE_STYLE}</style></head>
-<body><main><a class="back" href="/#audits">← Contrast</a>${markdownToHtml(md)}</main></body></html>`;
+<body>
+<nav class="top">
+  <a class="brand" href="/"><span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 000 16z" fill="#141413"/></svg></span>Contrast</a>
+  <a class="tool" href="/scan">Try the free scanner</a>
+</nav>
+<main>${enhanceAuditHtml(markdownToHtml(md))}</main>
+</body></html>`;
         return send(200, html);
       }
 
