@@ -10,8 +10,17 @@ test('a promise that settles in time passes straight through', async () => {
 });
 
 test('a promise that hangs is abandoned, with the label in the message', async () => {
-  const forever = new Promise(() => {});
+  // Resolvable, not a true `new Promise(() => {})` — production code abandons
+  // it (never awaits it again), but the test settles it once the assertion is
+  // done so nothing outlives this test. A permanently-pending promise here
+  // left withTimeout's internal .finally() chain dangling forever, which a
+  // recent Node patch on CI flags as "still pending after the event loop
+  // resolved" and cancels the rest of the file over — a real Node-version
+  // difference between this machine and GitHub's runner, not a flaky test.
+  let resolveForever;
+  const forever = new Promise((resolve) => { resolveForever = resolve; });
   await assert.rejects(withTimeout(forever, 20, 'lighthouse on /slow'), /timed out after 0s: lighthouse on \/slow/);
+  resolveForever();
 });
 
 test('0 or no budget means no deadline at all', async () => {
