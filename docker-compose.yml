@@ -10,6 +10,14 @@ services:
     # Ports are unused (and invalid) under host networking — do not add a
     # `ports:` block here.
     network_mode: host
+    # Chrome's own sandbox needs unprivileged user namespaces, which Docker's
+    # default seccomp profile blocks — without this it dies with "No usable
+    # sandbox!". This is Puppeteer's own documented fix for their image, and
+    # the reason to prefer it over --no-sandbox: this process renders
+    # arbitrary third-party pages, so the renderer sandbox is the containment
+    # boundary, not a nicety.
+    cap_add:
+      - SYS_ADMIN
     volumes:
       # Bind mounts, not named volumes: config.json stays hand-editable on the
       # host exactly as the README promises, and sessions/runs survive
@@ -34,6 +42,10 @@ services:
     container_name: contrast-public
     restart: unless-stopped
     network_mode: host
+    # Same reason as above — and it matters more here: this is the service
+    # that renders URLs anonymous strangers paste in.
+    cap_add:
+      - SYS_ADMIN
     command: ["node", "src/public/server.js"]
     environment:
       - PUBLIC_PORT=8080
