@@ -372,6 +372,16 @@ Recall against criteria that do have a running rule is far higher.
 
 *(newest first)*
 
+- **2026-09-04** — Step 9 complete, checklist done: drafted launch assets in `docs/launch/`
+  (Product Hunt tagline + description + first comment, G2/Capterra listing copy, a one-page
+  IT-services pitch grounded in the real EAA/ADA compliance angle, and a cold email template).
+  The checklist's own "do this now" was verified, not eyeballed: a first email draft measured
+  at 42 words read aloud in 17–19s at normal/careful pace, over the 10–15s target; cut to 28
+  words and re-measured at 11.2–12.9s before shipping. All five `## Done condition` items are
+  now met: 7 phases verified, real accuracy numbers (87%/37% over 931 ACT cases), redeployed
+  and reachable (Tailscale for the admin dashboard, bare IP for the public funnel), the free
+  funnel + landing page are live, and the audit writeups + launch assets are ready to publish.
+
 - **2026-09-04** — Fixed CI hanging indefinitely on every push. Root cause: the `test` job ran
   inside `ghcr.io/puppeteer/puppeteer` with `--user root` (needed so GitHub's bind-mounted
   workspace was writable), but Chrome refuses to run its own sandbox as root without
