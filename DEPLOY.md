@@ -100,10 +100,23 @@ docker compose pull && docker compose up -d
 want to pull instead of rebuild locally every time — left as `build: .` by default so the VPS
 never needs a GHCR login.)
 
-**Not set up here on purpose**: auto-deploy from GitHub Actions straight onto the VPS. That
-needs an SSH private key stored as a repository secret — a real access-granting decision, not
-a default to wire in quietly. If you want it later: add a `deploy` job to `ci.yml` that SSHes
-in and runs the two commands above, gated behind `needs: build-and-push`.
+**Auto-deploy is set up**: `.github/workflows/ci.yml`'s `deploy` job SSHes into the VPS on every
+push to `main` (after tests pass and the image builds) and runs `git pull && docker compose up
+-d --build`. It needs three repository secrets — Settings → Secrets and variables → Actions:
+
+- `VPS_HOST` — the VPS's IP
+- `VPS_USER` — the SSH user (`adhrith`)
+- `VPS_SSH_KEY` — the **private** half of a *dedicated* deploy keypair, not a personal one:
+  ```bash
+  ssh-keygen -t ed25519 -f ~/.ssh/contrast_deploy -N ""
+  ssh-copy-id -i ~/.ssh/contrast_deploy.pub adhrith@<vps-ip>
+  ```
+  Paste the contents of `~/.ssh/contrast_deploy` (no `.pub`) as the secret value. Using a
+  dedicated key means it can be revoked from `~/.ssh/authorized_keys` on the VPS without
+  touching your own access, if it's ever rotated or the repo's secrets are ever exposed.
+
+Without these three secrets set, the `deploy` job simply fails (nothing to guess at) — `test`
+and `build-and-push` still run and pass on their own.
 
 ## Step 6: the public scan funnel
 

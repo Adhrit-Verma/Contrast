@@ -26,10 +26,9 @@ jobs:
       - run: npm test
 
   # Builds the same image `docker compose build` produces on the VPS and
-  # pushes it to GHCR. Deploying it is a manual `docker compose pull && up -d`
-  # on the VPS (see the deploy runbook) — auto-deploying straight from here
-  # would need an SSH private key stored as a repo secret, which is a real
-  # security decision to make deliberately, not a default to wire in quietly.
+  # pushes it to GHCR — a build sanity-check + a copy anyone can `docker pull`
+  # independently of the VPS. The `deploy` job below is what actually updates
+  # the running site; this job existing on its own changes nothing there.
   build-and-push:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -60,3 +59,26 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Rebuilds on the VPS itself from the same commit, rather than pulling the
+  # GHCR image above — the VPS never needs a registry login this way, and
+  # docker-compose.yml's `build: .` stays the single source of truth for how
+  # the image is built. Needs three repo secrets: VPS_HOST, VPS_USER,
+  # VPS_SSH_KEY (a dedicated deploy key, not a personal one — see DEPLOY.md).
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/aviatrack/contrast
+            git pull origin main
+            docker compose up -d --build contrast contrast-public
+            docker image prune -f
+            docker compose logs --tail 20
