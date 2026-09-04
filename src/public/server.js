@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { join, extname, resolve, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { openSession } from '../browser/session.js';
 import { crawl } from '../browser/crawl.js';
 import { scanPage, startRun, finishRun, runDir } from '../scan/index.js';
@@ -17,9 +18,32 @@ import { writeHtml, writeJson } from '../report/index.js';
 import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
 import { assertPublicUrl } from './ssrf.js';
 import { createIpLimiter, createConcurrencyGate } from './ipLimiter.js';
+import { markdownToHtml } from './markdown.js';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'public');
+const AUDITS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../docs/audits');
 const VALID_ID = /^[\w:.-]+$/; // blocks `/`, `..`, null bytes — anything path-traversal-shaped
+const VALID_SLUG = /^[a-z0-9-]+$/;
+
+const AUDIT_PAGE_STYLE = `
+  :root { --canvas:#faf9f5; --surface:#fff; --line:#e6dfd8; --line-strong:#d5cec2; --text:#141413; --text-2:#3d3d3a; --text-3:#6c6a64; --accent:#cc785c; --accent-text:#a25439; }
+  * { box-sizing: border-box }
+  body { margin:0; background:var(--canvas); color:var(--text); font:15px/1.65 Inter,-apple-system,"Segoe UI",sans-serif }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px }
+  a.back { color:var(--text-3); font-size:13px; text-decoration:none }
+  a.back:hover { color:var(--accent-text) }
+  a { color: var(--accent-text) }
+  h1 { font-family:"Tiempos Headline","Iowan Old Style",Georgia,serif; font-weight:400; font-size:30px; margin:20px 0 6px; letter-spacing:-.01em }
+  h2 { font-family:"Tiempos Headline","Iowan Old Style",Georgia,serif; font-weight:400; font-size:20px; margin:28px 0 8px }
+  h3 { font-size:15px; margin:20px 0 6px }
+  p { color: var(--text-2); margin: 8px 0 }
+  code { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; font-size: .9em; background: #f5f0e8; padding: 1px 5px; border-radius: 4px }
+  pre { background: #141413; color: #f5f0e8; padding: 14px 16px; border-radius: 8px; overflow-x: auto }
+  pre code { background: none; padding: 0; color: inherit }
+  ul { color: var(--text-2); padding-left: 20px }
+  li { margin: 4px 0 }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+`;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -84,6 +108,16 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
   loadKnowledge({ dir: knowledgeDir }).then((k) => (kb = k));
   setInterval(() => ipLimiter.sweep(), 10 * 60 * 1000).unref();
 
+  // Unique visitors, persisted so a redeploy doesn't reset the count. Keyed by
+  // a hash of the IP, never the IP itself — this is a headline number, not a
+  // visitor log.
+  db.exec('CREATE TABLE IF NOT EXISTS visits (ipHash TEXT PRIMARY KEY, firstSeen TEXT)');
+  const countVisit = (ip) => {
+    const hash = createHash('sha256').update(ip).digest('hex');
+    db.prepare('INSERT OR IGNORE INTO visits (ipHash, firstSeen) VALUES (?, ?)').run(hash, new Date().toISOString());
+  };
+  const visitCount = () => db.prepare('SELECT COUNT(*) AS n FROM visits').get().n;
+
   const rootAbs = resolve('runs');
 
   async function runScan(runId, seedUrl) {
@@ -134,10 +168,28 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
 
     try {
       if (url.pathname === '/' && req.method === 'GET') {
+        countVisit(ip);
         return send(200, readFileSync(join(PUBLIC_DIR, 'index.html'))); // the landing page
       }
       if (url.pathname === '/scan' && req.method === 'GET') {
         return send(200, readFileSync(join(PUBLIC_DIR, 'scan.html'))); // the paste-a-URL tool
+      }
+      if (url.pathname === '/api/visits' && req.method === 'GET') {
+        return json(200, { count: visitCount() });
+      }
+
+      const audit = /^\/audits\/([a-z0-9-]+)$/.exec(url.pathname);
+      if (audit && req.method === 'GET') {
+        const slug = audit[1];
+        const mdPath = join(AUDITS_DIR, `${slug}.md`);
+        if (!VALID_SLUG.test(slug) || !existsSync(mdPath)) return send(404, 'not found');
+        const md = readFileSync(mdPath, 'utf8');
+        const title = /^#\s+(.+)$/m.exec(md)?.[1] ?? 'Accessibility audit';
+        const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} — Contrast</title><style>${AUDIT_PAGE_STYLE}</style></head>
+<body><main><a class="back" href="/#audits">← Contrast</a>${markdownToHtml(md)}</main></body></html>`;
+        return send(200, html);
       }
 
       if (url.pathname === '/scan' && req.method === 'POST') {

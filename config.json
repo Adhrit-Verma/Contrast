@@ -133,6 +133,150 @@
     }
   },
   "clients": {
+    "sbi": {
+      "label": "State Bank of India",
+      "seedUrl": "https://sbi.co.in/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "hdfcbank": {
+      "label": "HDFC Bank",
+      "seedUrl": "https://www.hdfcbank.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "flipkart": {
+      "label": "Flipkart",
+      "seedUrl": "https://www.flipkart.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "myntra": {
+      "label": "Myntra",
+      "seedUrl": "https://www.myntra.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "india-gov": {
+      "label": "India.gov.in (National Portal)",
+      "seedUrl": "https://www.india.gov.in/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "indigo": {
+      "label": "IndiGo Airlines",
+      "seedUrl": "https://www.goindigo.in/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "airindia": {
+      "label": "Air India",
+      "seedUrl": "https://www.airindia.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "toi": {
+      "label": "Times of India",
+      "seedUrl": "https://timesofindia.indiatimes.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "jio": {
+      "label": "Jio",
+      "seedUrl": "https://www.jio.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
     "demo": {
       "label": "BAD demo — before",
       "seedUrl": "https://www.w3.org/WAI/demos/bad/before/home.html",
@@ -152,6 +296,182 @@
       "crawl": {
         "maxPages": 3,
         "maxDepth": 1
+      }
+    },
+    "zomato": {
+      "label": "Zomato",
+      "seedUrl": "https://www.zomato.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "paytm": {
+      "label": "Paytm",
+      "seedUrl": "https://paytm.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "bookmyshow": {
+      "label": "BookMyShow",
+      "seedUrl": "https://in.bookmyshow.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "ndtv": {
+      "label": "NDTV",
+      "seedUrl": "https://www.ndtv.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "makemytrip": {
+      "label": "MakeMyTrip",
+      "seedUrl": "https://www.makemytrip.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "policybazaar": {
+      "label": "Policybazaar",
+      "seedUrl": "https://www.policybazaar.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "croma": {
+      "label": "Croma",
+      "seedUrl": "https://www.croma.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "dominos": {
+      "label": "Dominos India",
+      "seedUrl": "https://www.dominos.co.in/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "nykaa": {
+      "label": "Nykaa",
+      "seedUrl": "https://www.nykaa.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "lenskart": {
+      "label": "Lenskart",
+      "seedUrl": "https://www.lenskart.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
+      }
+    },
+    "tata1mg": {
+      "label": "Tata 1mg",
+      "seedUrl": "https://www.1mg.com/",
+      "requiresLogin": false,
+      "browser": {
+        "headless": true
+      },
+      "crawl": {
+        "maxPages": 4,
+        "maxDepth": 1
+      },
+      "scan": {
+        "screenshots": false,
+        "enrichBudgetMs": 5000
       }
     }
   }

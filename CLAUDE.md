@@ -165,6 +165,41 @@ feature sections in `<main>`. A hard-coded `<br>` in the headline was also remov
 screenshot showed it fighting with the browser's own wrapping at narrow widths, producing a
 choppier four-line headline than letting it wrap naturally.
 
+## Step 8 — public audit content
+
+`docs/audits/` (9 files: 8 site writeups + `summary.md`), added 2026-09-04. Ran deterministic
+scans (`node src/cli.js scan <client>`, no AI — no key configured) against 20 real Indian
+company sites, 4 pages each, added as new `config.json` clients.
+
+- **Result: 8 usable, 11 correctly blocked, 1 near-miss caught by hand.** Over half the 20
+  targets refused automated traffic outright — Cloudflare/Akamai challenge pages or
+  connection-level `ERR_HTTP2_PROTOCOL_ERROR` (HDFC Bank, India.gov.in, Myntra, Air India,
+  Zomato, BookMyShow, NDTV, MakeMyTrip, Policybazaar, Croma, Nykaa). `looksBlocked()` correctly
+  caught every one of these and abandoned the crawl rather than reporting on the challenge page.
+- **A real gap `looksBlocked()` has, found while reviewing the raw data before publishing**:
+  IndiGo's homepage returned a normal HTTP 200 with 8 axe findings that looked plausible (no
+  title, no `lang`, broken image) — but the image path was
+  `akamfailoverpage/indigologo.svg` and the page title was empty. It was Akamai's bot-defense
+  *fallback* page, not IndiGo's real site, and it slipped past every existing check because
+  `looksBlocked()` only flags 401/403/407/429/503 status codes or recognisable "checking your
+  browser" text — a 200-status near-empty failover page matches neither. Excluded from the
+  published writeup; this is a known, real gap worth closing (a heuristic on empty-title +
+  near-empty body at 200 status, weighed against not false-flagging legitimate minimal pages)
+  rather than something fixed under this step's time budget.
+- **First real production run of the pipeline outside the WAI demo fixtures** — and it
+  immediately validated the timeout lessons from Step 4: the first batch (screenshots on,
+  default `enrichBudgetMs`) blew the 120s page budget on several image-heavy sites (Flipkart,
+  Jio, SBI, IndiGo, Times of India all hit "moving on" mid-enrichment). Retried with
+  `scan.screenshots: false` — the actual bottleneck — and every site that returned real content
+  completed cleanly in under 30s.
+- **Every number in every writeup was cross-checked against `runs/audit.sqlite` directly**
+  (`getFindings()`), not against console output — console "0 findings" on a couple of runs in
+  the first batch turned out to be misleading (the process was killed by an external test
+  harness timeout before a backgrounded `scanPage()` call could finish and persist).
+- Findings correctly separate **confirmed** (axe rule, no `:incomplete` suffix) from **flagged
+  for human review** (`:incomplete` — axe couldn't fully resolve it, e.g. contrast against a
+  background image) in every writeup's language — never overstated as certain.
+
 ## Deployment
 
 `Dockerfile` + `docker-compose.yml` + `.github/workflows/ci.yml` + `DEPLOY.md`, added 2026-09-04.
@@ -336,6 +371,14 @@ Recall against criteria that do have a running rule is far higher.
 ## Status log
 
 *(newest first)*
+
+- **2026-09-04** — Step 8 complete: ran real deterministic scans against 20 major Indian
+  company sites, published 8 usable writeups + a summary in `docs/audits/`. 11 sites correctly
+  triggered the bot-protection safety stop; 1 (IndiGo) returned a 200-status Akamai failover
+  page that `looksBlocked()` didn't catch — found by hand before publishing and excluded, now
+  logged as a real, open gap in that detector. Every published number was cross-checked
+  directly against `runs/audit.sqlite`, not console output. 87/87 tests unaffected (content +
+  config only, no library code changed).
 
 - **2026-09-04** — Step 7 complete: added the landing page at `/` on the same public server from
   Step 6, moved the scan tool to `/scan`. Verified with a real headless-Chrome check (not just
