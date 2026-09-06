@@ -19,6 +19,11 @@ import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
 import { assertPublicUrl } from './ssrf.js';
 import { createIpLimiter, createConcurrencyGate } from './ipLimiter.js';
 import { markdownToHtml } from './markdown.js';
+import { fundingState, currentRaised, CURRENCY } from './funding.js';
+
+// Only this service — the free public funnel — ever shows a support ask.
+// The admin dashboard's reports go to paying clients and must stay clean.
+const SUPPORT_URL = process.env.SUPPORT_URL ?? 'https://buymeacoffee.com/kafydier';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), 'public');
 const AUDITS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../docs/audits');
@@ -193,7 +198,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
       finishRun(db, runId);
       const catalogue = criteriaCatalogue(kb ?? { chunks: [] });
       writeJson(db, runId, join(runDir(runId), 'report.json'), catalogue);
-      writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue);
+      writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()) });
       jobs.set(runId, { status: 'done' });
     } catch (err) {
       setRunNotes(db, runId, `scan failed: ${err.message}`);
@@ -233,6 +238,11 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
       }
       if (url.pathname === '/api/visits' && req.method === 'GET') {
         return json(200, { count: visitCount() });
+      }
+      // Read at request time, not at boot, so bumping FUNDING_RAISED and
+      // restarting isn't required — the meter reflects the env var live.
+      if (url.pathname === '/api/funding' && req.method === 'GET') {
+        return json(200, { ...fundingState(currentRaised()), currency: CURRENCY, supportUrl: SUPPORT_URL });
       }
 
       const audit = /^\/audits\/([a-z0-9-]+)$/.exec(url.pathname);
@@ -308,7 +318,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
         const runId = report[1];
         if (!getRun(db, runId)) return send(404, 'no such scan');
         const catalogue = criteriaCatalogue(kb ?? { chunks: [] });
-        writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue);
+        writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()) });
         res.writeHead(302, { location: `/runs/${encodeURIComponent(runId)}/report.html` });
         return res.end();
       }

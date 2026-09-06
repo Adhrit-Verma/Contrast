@@ -156,7 +156,9 @@ export const CSS = `
 html { scroll-behavior:smooth }
 body { font:16px/1.6 var(--font-ui); margin:0; color:var(--text); background:var(--canvas) }
 a { color:var(--accent-text) }
-code { font-family:var(--font-mono); font-size:.9em }
+/* CSS selectors and URLs have no spaces to break on — without this they push
+   the whole document sideways on a phone. */
+code { font-family:var(--font-mono); font-size:.9em; overflow-wrap:anywhere }
 :focus-visible { outline:2px solid var(--accent); outline-offset:2px }
 
 /* --------------------------------------------------------------- hero
@@ -193,6 +195,7 @@ code { font-family:var(--font-mono); font-size:.9em }
 .story-nav a:hover { color:var(--text) }
 
 main { max-width:1440px; margin:0 auto; padding:0 40px 96px }
+@media (max-width:560px) { main { padding:0 18px 72px } .hero { padding:40px 18px 48px } .story-nav-inner { padding:0 18px } }
 section { padding:64px 0; border-bottom:1px solid var(--line) }
 section:last-child { border-bottom:0 }
 .section-head { max-width:760px; margin:0 0 32px }
@@ -226,7 +229,10 @@ h2 { font-family:var(--font-display); font-weight:400; font-size:clamp(24px,2.6v
 /* ----------------------------------------------------------- data table */
 .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--surface) }
 table { border-collapse:collapse; width:100%; font-size:14px }
-th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--line) }
+/* Wrap rather than force a scroll container: these cells are criterion names
+   and reasons, not code — breaking them is kinder than a hidden sideways
+   scrollbar, and it stops a closed <details> leaking into document width. */
+th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--line); overflow-wrap:anywhere }
 th { background:var(--surface-2); font-weight:700; color:var(--text) }
 tr:last-child td { border-bottom:0 }
 details.coverage-detail { margin-top:8px }
@@ -236,12 +242,12 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
    Grouped by page, then component, via native <details> — an accordion that
    still works if CSS fails to load, and doesn't choke on a 990-finding run. */
 .page-group { margin-bottom:16px }
-.page-group > summary { cursor:pointer; font-family:var(--font-mono); font-size:14px; padding:14px 18px; background:var(--surface); border:1px solid var(--line); border-radius:12px; font-weight:600; display:flex; gap:10px; align-items:center }
-.page-group > summary .count { margin-left:auto; font-weight:400; color:var(--text-3) }
+.page-group > summary { cursor:pointer; font-family:var(--font-mono); font-size:14px; padding:14px 18px; background:var(--surface); border:1px solid var(--line); border-radius:12px; font-weight:600; display:flex; gap:10px; align-items:center; flex-wrap:wrap; overflow-wrap:anywhere }
+.page-group > summary .count { margin-left:auto; font-weight:400; color:var(--text-3); white-space:nowrap }
 .page-group[open] > summary { border-radius:12px 12px 0 0 }
 .page-group-body { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 18px 18px }
 .component { margin-top:14px }
-.component > summary { cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-2); padding:8px 0 }
+.component > summary { cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-2); padding:8px 0; overflow-wrap:anywhere }
 
 .finding { border-left:3px solid var(--text-3); background:var(--surface); border-radius:0 10px 10px 0; padding:16px 18px; margin:10px 0 }
 .finding.ai { border-left-style:dotted; border-left-width:4px; border-left-color:var(--accent) }
@@ -269,6 +275,16 @@ pre.after { background:#132518 }
 img.shot { max-width:100%; border:1px solid var(--line); border-radius:8px; margin-top:8px }
 .fix-box { margin-top:10px; padding-top:10px; border-top:1px dashed var(--line) }
 .fix-box h4 { margin:0 0 6px; font-size:13.5px; display:flex; gap:8px; align-items:center }
+
+/* ----------------------------------------------------------- support ask
+   Only ever rendered on the free public funnel's reports (see writeHtml's
+   supportUrl option) — never on one an auditor forwards to a paying client. */
+.support { margin-top:8px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px 28px; display:flex; gap:20px; align-items:center; flex-wrap:wrap }
+.support-copy { flex:1; min-width:260px }
+.support-copy b { display:block; font-family:var(--font-display); font-weight:400; font-size:20px; margin-bottom:4px }
+.support-copy p { margin:0; color:var(--text-2); font-size:14px; max-width:520px }
+.support a.give { flex:none; display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:15px; background:var(--accent); color:var(--on-accent, #141413); text-decoration:none; border-radius:10px; padding:13px 22px }
+.support a.give:hover { background:var(--accent-text); color:#fff }
 
 /* ------------------------------------------------------ diff page basics
    writeDiffHtml() shares this stylesheet but has no dark hero of its own. */
@@ -389,7 +405,30 @@ function severityRing(bySeverity) {
   </div>`;
 }
 
-export function writeHtml(db, runId, path, catalogue = []) {
+/**
+ * The free scanner's reports carry a support ask; an auditor's client-facing
+ * deliverable must not. Same generator, so the caller decides — only
+ * src/public/server.js passes supportUrl.
+ */
+function supportHtml(supportUrl, funding) {
+  if (!supportUrl) return '';
+  const bar = funding
+    ? `<div class="coverage-bar" style="margin:14px 0 8px" role="img" aria-label="${funding.raised} of ${funding.target} raised">
+         <i style="width:${funding.percent}%;background:var(--accent)"></i></div>
+       <p class="finding-meta" style="margin:0">$${funding.raised} of $${funding.target} raised${funding.next ? ` · next at $${funding.next.at}: ${esc(funding.next.title)}` : ' · every goal met, thank you'}</p>`
+    : '';
+  return `<section id="support"><div class="support">
+    <div class="support-copy">
+      <b>This scan was free. Running it wasn't.</b>
+      <p>Every scan drives a real browser on a real server. If this report told you something
+      useful, a coffee keeps the scanner free for the next person.</p>
+      ${bar}
+    </div>
+    <a class="give" href="${esc(supportUrl)}" target="_blank" rel="noopener">Buy me a coffee →</a>
+  </div></section>`;
+}
+
+export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, funding = null } = {}) {
   const report = buildReport(db, runId, catalogue);
   const reportDir = dirname(path);
   const s = report.summary;
@@ -487,6 +526,7 @@ ${report.reviewQueue.length ? `<section id="escalated">
   <div class="section-head"><span class="eyebrow">Nothing here was silently dropped</span><h2>Escalated to human review (${report.reviewQueue.length})</h2></div>
   <div class="table-wrap"><table><tr><th>Finding</th><th>Reason</th></tr>${report.reviewQueue.map((r) => `<tr><td><code>${esc(r.findingId)}</code></td><td>${esc(r.reason)}</td></tr>`).join('')}</table></div>
 </section>` : ''}
+${supportHtml(supportUrl, funding)}
 </main>
 <script>
 (function(){

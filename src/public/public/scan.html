@@ -80,6 +80,10 @@
   .result .cta { display:inline-flex; align-items:center; gap:8px; font-weight:700; background:var(--accent); color:var(--on-accent); text-decoration:none; border-radius:10px; padding:13px 22px; box-shadow:var(--shadow-1) }
   .result .cta:hover { background:var(--accent-text); color:#fff }
   .result .share { display:block; margin-top:12px; font-size:13px; color:var(--text-3) }
+  .result .support { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); font-size:13.5px; color:var(--text-2) }
+  .result .support a { font-weight:600 }
+  .result .fund-bar { height:8px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin:10px 0 6px; max-width:420px }
+  .result .fund-bar i { display:block; height:100%; background:var(--accent) }
 
   .notice { margin-top:48px; font-size:13.5px; color:var(--text-3); border-left:3px solid var(--accent); padding:10px 0 10px 16px; max-width:640px; line-height:1.65 }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms!important; animation-iteration-count:1!important; transition-duration:.001ms!important } }
@@ -198,8 +202,10 @@ async function poll(runId, reportUrl) {
         <p>Your report is ready — it lists every measured finding, its WCAG criterion, and
         which criteria nothing could check automatically.</p>
         <a class="cta" href="${reportUrl}">Open the report →</a>
-        <span class="share">This link is shareable — send it to whoever owns the code.</span>`;
+        <span class="share">This link is shareable — send it to whoever owns the code.</span>
+        <div class="support" id="support-ask" hidden></div>`;
       go.disabled = false; go.textContent = 'Scan another';
+      showSupport();
       return;
     }
     if (data.status === 'error') {
@@ -215,6 +221,21 @@ async function poll(runId, reportUrl) {
   result.innerHTML = `<h2>Still going</h2><p>This is taking longer than usual. The report link will
     work once it finishes: <a href="${reportUrl}">${escapeHtml(reportUrl)}</a></p>`;
   $('#go').disabled = false; $('#go').textContent = 'Scan it';
+}
+
+// Asked only once the scan has actually delivered something — never before,
+// never as a popup. Silently stays hidden if funding isn't configured.
+async function showSupport() {
+  const el = document.getElementById('support-ask');
+  if (!el) return;
+  const d = await fetch('/api/funding').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!d || !d.supportUrl) return;
+  const cur = d.currency || '$';
+  el.hidden = false;
+  el.innerHTML = `That scan drove a real browser on a real server. If it was useful,
+    <a href="${d.supportUrl}" target="_blank" rel="noopener">buy me a coffee</a> and it stays free for the next person.
+    <div class="fund-bar"><i style="width:${d.percent}%"></i></div>
+    <span style="font-size:12.5px;color:var(--text-3)">${cur}${d.raised} of ${cur}${d.target}${d.next ? ` · next at ${cur}${d.next.at}: ${escapeHtml(d.next.title)}` : ''}</span>`;
 }
 
 function escapeHtml(s) {

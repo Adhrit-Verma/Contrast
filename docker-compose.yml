@@ -52,6 +52,12 @@ services:
       - PUBLIC_MAX_PAGES=5
       - PUBLIC_RATE_LIMIT=3
       - PUBLIC_MAX_CONCURRENT=2
+      # The funding meter. Bump FUNDING_RAISED as donations land and restart
+      # this one service — it's read per request, so no rebuild is needed.
+      # Buy Me a Coffee has no unauthenticated read API; see src/public/funding.js
+      # for where a creator token would plug in to make it truly automatic.
+      - SUPPORT_URL=https://buymeacoffee.com/kafydier
+      - FUNDING_RAISED=${FUNDING_RAISED:-0}
     volumes:
       # Read-only knowledge base (for the report's WCAG coverage section) and
       # its own run artifacts — never the admin's config.json or sessions/.

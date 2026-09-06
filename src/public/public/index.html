@@ -186,6 +186,23 @@
   .pricing h2 { margin-bottom: var(--sp-3) }
   .pricing > p { color: var(--text-2); max-width: 480px; margin: 0 auto var(--sp-6); font-size: var(--fs-md) }
 
+  /* ------------------------------------------------------------- funding
+     A goal ladder, not a guilt trip: every tier is a real open item, and the
+     bar runs across the whole ladder so it keeps moving between tiers. */
+  .fund { max-width: 780px; margin: 0 auto; text-align: left }
+  .fund-bar { height: 14px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 0 0 10px; border: 1px solid var(--line) }
+  .fund-bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .9s var(--ease) }
+  .fund-nums { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: 13.5px; color: var(--text-2); margin-bottom: var(--sp-6); flex-wrap: wrap }
+  .fund-nums b { font-family: var(--font-mono); color: var(--text) }
+  .tiers { list-style: none; margin: 0 0 var(--sp-6); padding: 0; display: grid; gap: var(--sp-3) }
+  .tier { display: flex; gap: var(--sp-4); align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: var(--sp-4) var(--sp-5) }
+  .tier.reached { border-color: var(--ok); background: var(--ok-soft) }
+  .tier .amt { flex: none; font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--accent-text); min-width: 52px }
+  .tier.reached .amt { color: var(--ok) }
+  .tier b { display: block; font-size: 15px; margin-bottom: 2px }
+  .tier p { margin: 0; font-size: 13.5px; color: var(--text-2) }
+  .tier .check { flex: none; font-size: 13px; color: var(--ok); font-weight: 700 }
+
   footer { text-align: center; padding: var(--sp-7) var(--sp-5) var(--sp-8); color: var(--text-3); font-size: 13px; line-height: 1.7 }
   footer .measure { max-width: 520px }
   footer a { color: var(--text-3); text-decoration: underline }
@@ -277,6 +294,23 @@
   </div>
 </section>
 
+<section id="support" class="tint" aria-label="Support this project" hidden>
+  <div class="section-inner">
+    <div class="section-head">
+      <h2>What your coffee actually buys</h2>
+      <p>The scanner is free and runs a real browser on a real server for every scan. Here's
+        exactly what gets built at each point — every one of these is an open item today, not a
+        wishlist.</p>
+    </div>
+    <div class="fund">
+      <div class="fund-bar"><i id="fund-fill"></i></div>
+      <p class="fund-nums"><span><b id="fund-raised">$0</b> raised of <b id="fund-target">$0</b></span><span id="fund-next"></span></p>
+      <ul class="tiers" id="tiers"></ul>
+      <a class="cta" id="fund-cta" href="#">Buy me a coffee →</a>
+    </div>
+  </div>
+</section>
+
 <section class="pricing" aria-label="Pricing">
   <span class="badge">Free during beta</span>
   <h2>No pricing yet — because we're still earning it</h2>
@@ -327,6 +361,33 @@
   }
   poll();
   setInterval(poll, 20000);
+})();
+
+// Funding meter: the section stays hidden unless the endpoint answers, so a
+// server without funding configured just doesn't show an empty progress bar.
+(function () {
+  var sec = document.getElementById('support');
+  if (!sec) return;
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); };
+  fetch('/api/funding').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    if (!d || !d.goals || !d.goals.length) return;
+    var cur = d.currency || '$';
+    sec.hidden = false;
+    document.getElementById('fund-raised').textContent = cur + d.raised;
+    document.getElementById('fund-target').textContent = cur + d.target;
+    document.getElementById('fund-next').textContent = d.next
+      ? 'Next at ' + cur + d.next.at + ': ' + d.next.title
+      : 'Every goal met — thank you';
+    document.getElementById('fund-cta').href = d.supportUrl || '#';
+    document.getElementById('tiers').innerHTML = d.goals.map(function (g) {
+      return '<li class="tier' + (g.reached ? ' reached' : '') + '">' +
+        '<span class="amt">' + cur + g.at + '</span>' +
+        '<span><b>' + esc(g.title) + '</b><p>' + esc(g.why) + '</p></span>' +
+        (g.reached ? '<span class="check">funded</span>' : '') + '</li>';
+    }).join('');
+    // Fill after paint so the width transition actually runs.
+    requestAnimationFrame(function () { document.getElementById('fund-fill').style.width = d.percent + '%'; });
+  }).catch(function () {});
 })();
 
 // Carousel: native horizontal scroll, buttons just nudge it. No custom
