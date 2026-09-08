@@ -9,7 +9,12 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, resolve, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDb, listRuns, getFindings, getFixes, getReviewQueue, pinRun, deleteRun, runIdsForClient } from '../db.js';
+import {
+  openDb, listRuns, getFindings, getFixes, getReviewQueue, pinRun, deleteRun, runIdsForClient,
+  listIncidents, insertIncident, markIncidentReviewed, insertRule, listRules,
+} from '../db.js';
+import { fundingState, currentRaised } from '../public/funding.js';
+import { cleanupOldRuns } from '../public/cleanup.js';
 import { writeHtml, writeJson, writeDiffHtml, writeVpat, buildReport, diffRuns } from '../report/index.js';
 import { runDir } from '../scan/index.js';
 import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
@@ -240,6 +245,106 @@ export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
         } catch (err) {
           return json(400, { error: err.message });
         }
+      }
+
+      // ------------------------------------------------ funnel monitoring
+      // Everything here reads/writes runs/public.sqlite — a second, separate
+      // database from this dashboard's own (dbPath). Opened per-request, same
+      // as every other route in this file opens dbPath — there is no
+      // connection cache anywhere in this server to fight.
+      if (url.pathname.startsWith('/api/funnel')) {
+        const pubDb = openDb('runs/public.sqlite');
+
+        if (url.pathname === '/api/funnel/summary' && req.method === 'GET') {
+          const totals = pubDb.prepare('SELECT COUNT(*) n, SUM(finishedAt IS NOT NULL) done FROM runs').get();
+          const byDay = pubDb.prepare(`
+            SELECT substr(startedAt, 1, 10) day, COUNT(*) n FROM runs
+            WHERE startedAt >= datetime('now', '-30 days') GROUP BY day ORDER BY day
+          `).all();
+          const devices = pubDb.prepare('SELECT device, COUNT(*) n FROM scan_meta GROUP BY device ORDER BY n DESC').all();
+          const regions = pubDb.prepare(`
+            SELECT COALESCE(NULLIF(country, ''), 'unknown') country, COUNT(*) n
+            FROM scan_meta GROUP BY country ORDER BY n DESC
+          `).all();
+          const clicks = pubDb.prepare('SELECT button, COUNT(*) n FROM click_events GROUP BY button').all();
+          const visits = pubDb.prepare('SELECT COUNT(*) n, SUM(lastSeen != firstSeen) returned FROM visits').get();
+          const scanners = pubDb.prepare('SELECT COUNT(DISTINCT ipHash) n FROM scan_meta WHERE ipHash IS NOT NULL').get();
+          const scans = pubDb.prepare('SELECT COUNT(*) n FROM scan_meta').get();
+          return json(200, {
+            totalScans: totals.n ?? 0,
+            completionRate: totals.n ? (totals.done ?? 0) / totals.n : 0,
+            scansByDay: byDay,
+            devices, regions, clicks,
+            retention: {
+              visitors: visits.n ?? 0,
+              returning: visits.returned ?? 0,
+              rate: visits.n ? (visits.returned ?? 0) / visits.n : 0,
+              avgScansPerVisitor: scanners.n ? (scans.n ?? 0) / scanners.n : 0,
+            },
+            funding: fundingState(currentRaised()),
+          });
+        }
+
+        if (url.pathname === '/api/funnel/runs' && req.method === 'GET') {
+          const limit = Math.min(Number(url.searchParams.get('limit')) || 50, 200);
+          const offset = Number(url.searchParams.get('offset')) || 0;
+          const rows = pubDb.prepare(`
+            SELECT r.id, r.seedUrl, r.startedAt, r.finishedAt, r.notes,
+                   (SELECT COUNT(*) FROM findings f WHERE f.runId = r.id) findingCount,
+                   m.device, m.country
+            FROM runs r LEFT JOIN scan_meta m ON m.runId = r.id
+            ORDER BY r.startedAt DESC LIMIT ? OFFSET ?
+          `).all(limit, offset);
+          return json(200, { runs: rows });
+        }
+
+        const runAction = /^\/api\/funnel\/runs\/([\w:.-]+)\/(delete|flag)$/.exec(url.pathname);
+        if (runAction && req.method === 'POST') {
+          const problem = csrfProblem(req, port);
+          if (problem) return json(403, { error: problem });
+          const [, runId, action] = runAction;
+          if (action === 'delete') {
+            deleteRun(pubDb, runId);
+            rmSync(runDir(runId), { recursive: true, force: true });
+          } else {
+            const body = await readJson(req);
+            insertIncident(pubDb, { runId, kind: 'manual', detail: body.note || 'flagged from the funnel panel' });
+          }
+          return json(200, { ok: true });
+        }
+
+        if (url.pathname === '/api/funnel/incidents' && req.method === 'GET') {
+          return json(200, { incidents: listIncidents(pubDb) });
+        }
+
+        const incidentAction = /^\/api\/funnel\/incidents\/([\w-]+)\/(rule|dismiss)$/.exec(url.pathname);
+        if (incidentAction && req.method === 'POST') {
+          const problem = csrfProblem(req, port);
+          if (problem) return json(403, { error: problem });
+          const [, incidentId, action] = incidentAction;
+          if (action === 'rule') {
+            const body = await readJson(req);
+            if (!body.patternType || !body.pattern) return json(400, { error: 'patternType and pattern are required' });
+            insertRule(pubDb, {
+              patternType: body.patternType, pattern: body.pattern,
+              action: body.action || 'treat_as_blocked', note: body.note ?? null, sourceIncidentId: incidentId,
+            });
+          }
+          markIncidentReviewed(pubDb, incidentId);
+          return json(200, { ok: true });
+        }
+
+        if (url.pathname === '/api/funnel/rules' && req.method === 'GET') {
+          return json(200, { rules: listRules(pubDb) });
+        }
+
+        if (url.pathname === '/api/funnel/cleanup' && req.method === 'POST') {
+          const problem = csrfProblem(req, port);
+          if (problem) return json(403, { error: problem });
+          return json(200, { deleted: cleanupOldRuns(pubDb, Number(process.env.PUBLIC_RUN_RETENTION_DAYS) || 15) });
+        }
+
+        return json(404, { error: 'not found' });
       }
 
       if (url.pathname === '/api/clients') {

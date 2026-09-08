@@ -10,16 +10,23 @@ import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { join, extname, resolve, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import geoip from 'geoip-lite';
 import { openSession } from '../browser/session.js';
 import { crawl } from '../browser/crawl.js';
 import { scanPage, startRun, finishRun, runDir } from '../scan/index.js';
-import { openDb, getRun, setRunNotes } from '../db.js';
+import { openDb, getRun, setRunNotes, insertScanMeta, insertIncident, insertClickEvent } from '../db.js';
 import { writeHtml, writeJson } from '../report/index.js';
 import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
 import { assertPublicUrl } from './ssrf.js';
 import { createIpLimiter, createConcurrencyGate } from './ipLimiter.js';
 import { markdownToHtml } from './markdown.js';
 import { fundingState, currentRaised, CURRENCY } from './funding.js';
+import { classifyDevice } from './device.js';
+import { cleanupOldRuns } from './cleanup.js';
+import { loadActiveRules, matchesRule } from './rules.js';
+
+const CLICK_BUTTONS = new Set(['landing-cta', 'scan-complete-card', 'report-footer']);
+const RUN_RETENTION_DAYS = Number(process.env.PUBLIC_RUN_RETENTION_DAYS ?? 15);
 
 // Only this service — the free public funnel — ever shows a support ask.
 // The admin dashboard's reports go to paying clients and must stay clean.
@@ -169,31 +176,55 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
   let kb = null;
   loadKnowledge({ dir: knowledgeDir }).then((k) => (kb = k));
   setInterval(() => ipLimiter.sweep(), 10 * 60 * 1000).unref();
+  // 15-day storage cap on the free tool's own runs — checked a few times a
+  // day, not on a tight loop; deleting is cheap and this isn't time-critical.
+  setInterval(() => cleanupOldRuns(db, RUN_RETENTION_DAYS), 6 * 60 * 60 * 1000).unref();
 
   // Unique visitors, persisted so a redeploy doesn't reset the count. Keyed by
   // a hash of the IP, never the IP itself — this is a headline number, not a
-  // visitor log.
-  db.exec('CREATE TABLE IF NOT EXISTS visits (ipHash TEXT PRIMARY KEY, firstSeen TEXT)');
+  // visitor log. lastSeen turns this into the retention signal too: a visitor
+  // is "returning" once lastSeen has moved past firstSeen.
+  db.exec('CREATE TABLE IF NOT EXISTS visits (ipHash TEXT PRIMARY KEY, firstSeen TEXT, lastSeen TEXT)');
+  try { db.exec('ALTER TABLE visits ADD COLUMN lastSeen TEXT'); } catch {}
+  const hashIp = (ip) => createHash('sha256').update(ip).digest('hex');
   const countVisit = (ip) => {
-    const hash = createHash('sha256').update(ip).digest('hex');
-    db.prepare('INSERT OR IGNORE INTO visits (ipHash, firstSeen) VALUES (?, ?)').run(hash, new Date().toISOString());
+    const hash = hashIp(ip);
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO visits (ipHash, firstSeen, lastSeen) VALUES (?, ?, ?)
+      ON CONFLICT(ipHash) DO UPDATE SET lastSeen = excluded.lastSeen
+    `).run(hash, now, now);
   };
   const visitCount = () => db.prepare('SELECT COUNT(*) AS n FROM visits').get().n;
 
   const rootAbs = resolve('runs');
 
-  async function runScan(runId, seedUrl) {
+  async function runScan(runId, seedUrl, { ip, ua } = {}) {
     jobs.set(runId, { status: 'running' });
+    insertScanMeta(db, {
+      runId, ipHash: ip ? hashIp(ip) : null, device: classifyDevice(ua),
+      country: ip ? geoip.lookup(ip)?.country ?? null : null,
+      region: ip ? geoip.lookup(ip)?.region ?? null : null,
+      createdAt: new Date().toISOString(),
+    });
     const client = ephemeralClient(seedUrl, runId);
+    const rules = loadActiveRules(db);
     let session;
     try {
       session = await openSession(client);
       let total = 0;
       await crawl(session, client, async (page, info) => {
+        if (matchesRule(rules, { url: info.finalUrl, title: info.title, status: info.status })) {
+          insertIncident(db, { runId, kind: 'rule_blocked', url: info.finalUrl, detail: 'matched a crawl rule, findings not persisted' });
+          return;
+        }
         const { findings } = await scanPage(page, info, { runId, client, db, persist: true });
         total += findings.length;
       }, {
-        onAbandoned: (reason) => setRunNotes(db, runId, reason),
+        onAbandoned: (reason) => {
+          setRunNotes(db, runId, reason);
+          insertIncident(db, { runId, kind: 'blocked', url: seedUrl, detail: reason });
+        },
       });
       finishRun(db, runId);
       const catalogue = criteriaCatalogue(kb ?? { chunks: [] });
@@ -202,6 +233,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
       jobs.set(runId, { status: 'done' });
     } catch (err) {
       setRunNotes(db, runId, `scan failed: ${err.message}`);
+      insertIncident(db, { runId, kind: 'scan_error', url: seedUrl, detail: err.message });
       finishRun(db, runId);
       jobs.set(runId, { status: 'error', error: err.message });
     } finally {
@@ -271,13 +303,17 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
         // would burn a legitimate visitor's whole hourly allowance on nothing.
         let body = '';
         for await (const chunk of req) body += chunk;
-        let seedUrl;
+        let seedUrl, attemptedUrl;
         try {
           const parsed = JSON.parse(body || '{}');
+          attemptedUrl = parsed.url ?? null;
           const normalised = normaliseUrl(parsed.url);
           if (!normalised) throw new Error('that is not a http(s) address');
           seedUrl = await assertPublicUrl(normalised);
         } catch (err) {
+          if (/private|reserved|resolve/i.test(err.message)) {
+            insertIncident(db, { kind: 'ssrf_blocked', url: attemptedUrl, detail: err.message });
+          }
           return json(400, { error: err.message });
         }
 
@@ -296,8 +332,18 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
         // Respond immediately; the scan itself runs in the background and the
         // page polls /status. A visitor's browser should not have to hold a
         // connection open for the ~30-60s a real crawl can take.
-        runScan(runId, seedUrl);
+        runScan(runId, seedUrl, { ip, ua: req.headers['user-agent'] });
         return json(202, { runId, statusUrl: `/status/${runId}`, reportUrl: `/r/${runId}` });
+      }
+
+      if (url.pathname === '/api/event' && req.method === 'POST') {
+        let body = '';
+        for await (const chunk of req) body += chunk;
+        let parsed;
+        try { parsed = JSON.parse(body || '{}'); } catch { return json(400, { error: 'bad json' }); }
+        if (!CLICK_BUTTONS.has(parsed.button)) return json(400, { error: 'unknown button' });
+        insertClickEvent(db, { button: parsed.button, page: String(parsed.page ?? '').slice(0, 200), ipHash: hashIp(ip) });
+        return json(200, { ok: true });
       }
 
       const status = /^\/status\/([\w:.-]+)$/.exec(url.pathname);

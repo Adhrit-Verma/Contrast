@@ -233,9 +233,12 @@ async function showSupport() {
   const cur = d.currency || '$';
   el.hidden = false;
   el.innerHTML = `That scan drove a real browser on a real server. If it was useful,
-    <a href="${d.supportUrl}" target="_blank" rel="noopener">buy me a coffee</a> and it stays free for the next person.
+    <a href="${d.supportUrl}" target="_blank" rel="noopener" id="support-link">buy me a coffee</a> and it stays free for the next person.
     <div class="fund-bar"><i style="width:${d.percent}%"></i></div>
     <span style="font-size:12.5px;color:var(--text-3)">${cur}${d.raised} of ${cur}${d.target}${d.next ? ` · next at ${cur}${d.next.at}: ${escapeHtml(d.next.title)}` : ''}</span>`;
+  document.getElementById('support-link')?.addEventListener('click', () => {
+    navigator.sendBeacon?.('/api/event', JSON.stringify({ button: 'scan-complete-card', page: 'scan' }));
+  });
 }
 
 function escapeHtml(s) {

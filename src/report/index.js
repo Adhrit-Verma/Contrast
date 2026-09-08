@@ -424,7 +424,8 @@ function supportHtml(supportUrl, funding) {
       useful, a coffee keeps the scanner free for the next person.</p>
       ${bar}
     </div>
-    <a class="give" href="${esc(supportUrl)}" target="_blank" rel="noopener">Buy me a coffee →</a>
+    <a class="give" href="${esc(supportUrl)}" target="_blank" rel="noopener"
+       onclick="navigator.sendBeacon&&navigator.sendBeacon('/api/event', JSON.stringify({button:'report-footer',page:'report'}))">Buy me a coffee →</a>
   </div></section>`;
 }
 

@@ -379,6 +379,9 @@
       ? 'Next at ' + cur + d.next.at + ': ' + d.next.title
       : 'Every goal met — thank you';
     document.getElementById('fund-cta').href = d.supportUrl || '#';
+    document.getElementById('fund-cta').addEventListener('click', function () {
+      navigator.sendBeacon && navigator.sendBeacon('/api/event', JSON.stringify({ button: 'landing-cta', page: 'landing' }));
+    });
     document.getElementById('tiers').innerHTML = d.goals.map(function (g) {
       return '<li class="tier' + (g.reached ? ' reached' : '') + '">' +
         '<span class="amt">' + cur + g.at + '</span>' +

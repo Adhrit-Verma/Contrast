@@ -9,4 +9,7 @@ config.json.tmp
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# social/marketing drafts + captured media — never shipped in the repo
+social/
 CONTRAST_COMPLETION_CHECKLIST.md

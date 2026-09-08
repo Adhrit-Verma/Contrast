@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS ai_cache (
 CREATE TABLE IF NOT EXISTS review_queue (
   id TEXT PRIMARY KEY, runId TEXT, findingId TEXT, reason TEXT, context TEXT, createdAt TEXT
 );
+CREATE TABLE IF NOT EXISTS scan_meta (
+  runId TEXT PRIMARY KEY, ipHash TEXT, device TEXT, country TEXT, region TEXT, createdAt TEXT
+);
+CREATE TABLE IF NOT EXISTS click_events (
+  id TEXT PRIMARY KEY, ts TEXT, button TEXT, page TEXT, ipHash TEXT
+);
+CREATE TABLE IF NOT EXISTS scan_incidents (
+  id TEXT PRIMARY KEY, runId TEXT, ts TEXT, kind TEXT, url TEXT, detail TEXT, reviewed INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS crawl_rules (
+  id TEXT PRIMARY KEY, createdAt TEXT, patternType TEXT, pattern TEXT, action TEXT, note TEXT, sourceIncidentId TEXT
+);
 `;
 
 export function openDb(path = 'runs/audit.sqlite') {
@@ -55,9 +67,9 @@ export const pinRun = (db, runId, pinned) =>
 export const setRunNotes = (db, runId, notes) =>
   db.prepare('UPDATE runs SET notes = ? WHERE id = ?').run(notes, runId);
 
-/** A run is rows in five tables plus a folder of screenshots. Take all of it. */
+/** A run is rows in several tables plus a folder of screenshots. Take all of it. */
 export function deleteRun(db, runId) {
-  for (const t of ['findings', 'pages', 'fixes', 'review_queue']) {
+  for (const t of ['findings', 'pages', 'fixes', 'review_queue', 'scan_meta', 'scan_incidents']) {
     db.prepare(`DELETE FROM ${t} WHERE runId = ?`).run(runId);
   }
   db.prepare('DELETE FROM runs WHERE id = ?').run(runId);
@@ -114,3 +126,26 @@ export const insertReview = (db, runId, finding, reason, context) =>
   });
 export const listRuns = (db) =>
   db.prepare('SELECT * FROM runs ORDER BY pinned DESC, startedAt DESC').all();
+
+// -------------------------------------------------------- funnel monitoring
+// scan_meta: one row per public scan (device/region, never the raw IP).
+export const insertScanMeta = (db, meta) => insert(db, 'scan_meta', meta);
+
+// click_events: donation-CTA beacons. Not runId-scoped, so deleteRun()/cleanup
+// never touch these — they're a standing usage log, not part of a run's data.
+export const insertClickEvent = (db, { button, page, ipHash }) =>
+  insert(db, 'click_events', { id: randomUUID().slice(0, 18), ts: new Date().toISOString(), button, page, ipHash });
+
+// scan_incidents: the raw material for the human-curated rule ledger below.
+export const insertIncident = (db, { runId = null, kind, url = null, detail }) =>
+  insert(db, 'scan_incidents', { id: randomUUID().slice(0, 18), runId, ts: new Date().toISOString(), kind, url, detail, reviewed: 0 });
+export const listIncidents = (db, { reviewed = 0 } = {}) =>
+  db.prepare('SELECT * FROM scan_incidents WHERE reviewed = ? ORDER BY ts DESC').all(reviewed ? 1 : 0);
+export const markIncidentReviewed = (db, id) =>
+  db.prepare('UPDATE scan_incidents SET reviewed = 1 WHERE id = ?').run(id);
+
+// crawl_rules: what a human promoted an incident into. Applied at scan time by
+// src/public/rules.js — this file only stores them.
+export const insertRule = (db, { patternType, pattern, action, note = null, sourceIncidentId = null }) =>
+  insert(db, 'crawl_rules', { id: randomUUID().slice(0, 18), createdAt: new Date().toISOString(), patternType, pattern, action, note, sourceIncidentId });
+export const listRules = (db) => db.prepare('SELECT * FROM crawl_rules ORDER BY createdAt DESC').all();
