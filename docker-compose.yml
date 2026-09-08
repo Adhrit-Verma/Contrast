@@ -63,3 +63,22 @@ services:
       # its own run artifacts — never the admin's config.json or sessions/.
       - ./knowledge:/app/knowledge:ro
       - ./runs:/app/runs
+
+  # A third, separate service: private monitoring/analytics/DBMS for the
+  # public scanner's own data (runs/public.sqlite) — not a tab on the admin
+  # dashboard, not a route on the public scanner. No Puppeteer here (it never
+  # launches a browser), so no SYS_ADMIN and no config.json/sessions mount —
+  # this only ever reads/writes runs/.
+  contrast-funnel:
+    build: .
+    image: contrast:latest
+    container_name: contrast-funnel
+    restart: unless-stopped
+    # Same reasoning as the admin dashboard: 127.0.0.1-only bind, reached
+    # over Tailscale, never the open internet — this is a private tool.
+    network_mode: host
+    command: ["node", "src/funnel/server.js"]
+    environment:
+      - FUNNEL_PORT=4322
+    volumes:
+      - ./runs:/app/runs

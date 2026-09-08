@@ -35,6 +35,7 @@ usage: node src/cli.js <command>
   diff   <baseRunId> <headRunId>  re-audit diff: fixed / new / still broken
   runs                            list runs
   ui     [port]                   browse runs, reports and diffs at http://localhost:4321
+  funnel [port]                   monitor the public scanner's usage/db at http://localhost:4322
 `;
 
 const need = (v, msg) => {
@@ -227,6 +228,12 @@ switch (cmd) {
   case 'ui': {
     const { startUi } = await import('./ui/server.js');
     startUi({ cfg, port: Number(args[0]) || 4321 });
+    break;
+  }
+
+  case 'funnel': {
+    const { startFunnelUi } = await import('./funnel/server.js');
+    startFunnelUi({ port: Number(args[0]) || 4322 });
     break;
   }
 
