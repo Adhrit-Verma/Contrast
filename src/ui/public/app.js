@@ -1390,6 +1390,13 @@ const debounce = (fn, ms) => {
 
 // --------------------------------------------------------------- boot
 
+// "Sign out" only means something once a password exists; until then the
+// dashboard says so rather than pretending it is locked.
+api('/api/auth').then(({ passwordSet }) => {
+  if (passwordSet) $('#signout').hidden = false;
+  else $('#conn').title = 'No password set — run: node src/cli.js set-password';
+}).catch(() => {});
+
 Promise.all([api('/api/runs'), api('/api/clients')])
   .then(([runs, cfg]) => {
     state.runs = runs;

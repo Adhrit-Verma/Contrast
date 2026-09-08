@@ -25,6 +25,9 @@ services:
       - ./config.json:/app/config.json
       - ./sessions:/app/sessions
       - ./runs:/app/runs
+      # The login password, shared with contrast-funnel and with nothing else.
+      # Never mounted into contrast-public: that service is meant to be open.
+      - ./auth:/app/auth
     environment:
       # Optional: pre-seed the key instead of pasting it into Settings after
       # first boot. Leave unset and use the dashboard's Settings tab instead —
@@ -82,3 +85,6 @@ services:
       - FUNNEL_PORT=4322
     volumes:
       - ./runs:/app/runs
+      # Same password file as the dashboard — one credential for both private
+      # panels. Still no config.json and no sessions/ here.
+      - ./auth:/app/auth

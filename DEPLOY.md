@@ -38,11 +38,20 @@ Existing nginx on the box is untouched by any of this — Tailscale Serve binds 
 
 ```bash
 git clone <your-repo-url> contrast && cd contrast
-mkdir -p sessions runs   # bind-mount targets — Docker will create them as root-owned otherwise
+mkdir -p sessions runs auth   # bind-mount targets — Docker creates them root-owned otherwise
+cp config.example.json config.json
 ```
 
-`config.json` is already committed to the repo, so it arrives with the clone — no template
-step needed. Edit it now if you want to add real client sites beyond the built-in `demo`.
+**`config.json` is deliberately NOT in git.** It is per-install state: your client list only
+means anything alongside the `runs/` database that holds those clients' audits, and `runs/` is
+gitignored. Committing it meant every deployment inherited whatever sites the last committer
+happened to have locally, listed with zero runs each. Copy the example (two public W3C demo
+sites) and add real clients from the dashboard. If you forget, the app seeds it for you on
+first boot — but do it before `docker compose up`, or Docker will create a *directory* named
+`config.json` at the bind-mount path and the container will fail to read it.
+
+`auth/` holds the login password (scrypt-hashed, then encrypted at rest). Also gitignored,
+also per-install.
 
 ## 4. Build and start
 
@@ -59,13 +68,29 @@ README promises. The container uses `network_mode: host`, so "the dashboard's `1
 ## 5. Expose it to your tailnet
 
 ```bash
-sudo tailscale serve --bg 4321
+sudo tailscale serve --bg 4321                            # the dashboard, on :443
+sudo tailscale serve --bg --https=4322 http://127.0.0.1:4322   # the funnel panel
 tailscale serve status
 ```
 
 This gives you a URL like `https://contabo-vps.your-tailnet.ts.net` — reachable from any device
 on your tailnet, nowhere else. Tailscale issues and renews the certificate itself; there is
-nothing to configure.
+nothing to configure. Serve maps one port per entry, so the funnel panel needs its own line;
+without it that container is running but unreachable.
+
+## 5b. Set the login password
+
+Tailnet membership is the outer lock. The password is the second one, and it covers both
+private panels (dashboard and funnel) with one credential:
+
+```bash
+docker compose exec contrast node src/cli.js set-password
+```
+
+Until you run this, both panels say so in a banner and stay open to anyone on the tailnet —
+that is deliberate, because gating an install with no password set would lock you out of the
+only UI that could let you in. Changing the password signs out every existing session.
+The public scanner on :8080 is unaffected; it is meant to be public.
 
 ## 6. Verify — the actual "done" condition
 

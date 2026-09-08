@@ -5,13 +5,15 @@
 // access model as the admin dashboard (Tailscale reaches it, the open
 // internet does not) — this is a private tool, not a second public surface.
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, rmSync, readdirSync } from 'node:fs';
 import { join, extname, resolve, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, deleteRun, insertIncident, listIncidents, markIncidentReviewed, insertRule, listRules } from '../db.js';
 import { runDir } from '../scan/index.js';
 import { fundingState, currentRaised } from '../public/funding.js';
 import { cleanupOldRuns } from '../public/cleanup.js';
+import { handleAuth, hasPassword } from '../auth.js';
+import { createIpLimiter } from '../public/ipLimiter.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(HERE, 'public');
@@ -24,6 +26,47 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json',
 };
+
+// The only tables the browser may name. A request can never supply a table
+// name that reaches SQL — it can only pick one of these.
+const TABLES = ['runs', 'pages', 'findings', 'scan_meta', 'scan_incidents', 'crawl_rules', 'click_events', 'visits'];
+
+const percentile = (sorted, p) =>
+  sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] : 0;
+
+/** How much disk the public scanner's artifacts are actually using — the
+ *  number that makes the 15-day retention policy feel real. */
+function storageBytes(root = 'runs') {
+  let total = 0;
+  try {
+    for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      try { total += statSync(join(entry.parentPath ?? entry.path ?? root, entry.name)).size; } catch {}
+    }
+  } catch {}
+  return total;
+}
+
+/** Long blobs (htmlSnippet, a11yTree, raw JSON) make a table view unreadable
+ *  and the response enormous — the browser shows a preview, not the payload. */
+const clip = (row) => Object.fromEntries(Object.entries(row).map(([k, v]) => {
+  const s = v == null ? null : String(v);
+  return [k, s && s.length > 160 ? `${s.slice(0, 160)}…` : s];
+}));
+
+const csvCell = (v) => {
+  const s = v == null ? '' : String(v);
+  // A leading =, +, - or @ makes a spreadsheet treat the cell as a formula;
+  // prefixing an apostrophe is the standard defusing for exported data.
+  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+};
+
+function toCsv(rows) {
+  if (!rows.length) return '';
+  const cols = Object.keys(rows[0]);
+  return [cols.join(','), ...rows.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\n');
+}
 
 /** @returns {string|null} why the request was refused, or null if it is fine.
  *  Duplicated (not imported) from ui/server.js on purpose — this service
@@ -51,6 +94,9 @@ function readJson(req, limit = 64 * 1024) {
 }
 
 export function startFunnelUi({ port = 4322, dbPath = 'runs/public.sqlite' } = {}) {
+  const loginLimiter = createIpLimiter({ max: 20, windowMs: 15 * 60 * 1000 });
+  setInterval(() => loginLimiter.sweep(), 15 * 60 * 1000).unref();
+
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${port}`);
     const send = (code, body, type = 'text/html; charset=utf-8') => {
@@ -64,7 +110,72 @@ export function startFunnelUi({ port = 4322, dbPath = 'runs/public.sqlite' } = {
     };
 
     try {
+      // Same password as the dashboard — one operator, one credential, shared
+      // via the auth/ directory both private services mount (never the public
+      // scanner). A no-op until a password has been set.
+      if (await handleAuth(req, res, {
+        url, ip: req.socket.remoteAddress ?? 'unknown',
+        limiter: loginLimiter, title: 'Contrast funnel',
+      })) return;
+
       const db = openDb(dbPath);
+
+      if (url.pathname === '/api/auth' && req.method === 'GET') {
+        return json(200, { passwordSet: hasPassword() });
+      }
+
+      // ------------------------------------------------------- DBMS tools
+      // Table names can never come from the caller — every query below picks
+      // from this list, so there is no string a request could supply that
+      // reaches SQL.
+      if (url.pathname === '/api/tables' && req.method === 'GET') {
+        const tables = TABLES.map((name) => ({
+          name, rows: db.prepare(`SELECT COUNT(*) n FROM ${name}`).get().n,
+        }));
+        return json(200, { tables, storage: storageBytes() });
+      }
+
+      const table = /^\/api\/table\/(\w+)$/.exec(url.pathname);
+      if (table && req.method === 'GET') {
+        const name = table[1];
+        if (!TABLES.includes(name)) return json(400, { error: 'unknown table' });
+        const limit = Math.min(Number(url.searchParams.get('limit')) || 25, 500);
+        const offset = Number(url.searchParams.get('offset')) || 0;
+        const total = db.prepare(`SELECT COUNT(*) n FROM ${name}`).get().n;
+        const rows = db.prepare(`SELECT * FROM ${name} LIMIT ? OFFSET ?`).all(limit, offset);
+        if (url.searchParams.get('format') === 'csv') {
+          const all = db.prepare(`SELECT * FROM ${name}`).all();
+          return send(200, toCsv(all), 'text/csv; charset=utf-8');
+        }
+        return json(200, { name, total, limit, offset, rows: rows.map(clip) });
+      }
+
+      const ruleDelete = /^\/api\/rules\/([\w-]+)\/delete$/.exec(url.pathname);
+      if (ruleDelete && req.method === 'POST') {
+        const problem = csrfProblem(req, port);
+        if (problem) return json(403, { error: problem });
+        db.prepare('DELETE FROM crawl_rules WHERE id = ?').run(ruleDelete[1]);
+        return json(200, { ok: true });
+      }
+
+      // One run in full — the drill-down behind a row in the scans table.
+      const runDetail = /^\/api\/runs\/([\w:.-]+)$/.exec(url.pathname);
+      if (runDetail && req.method === 'GET') {
+        const runId = runDetail[1];
+        const run = db.prepare('SELECT * FROM runs WHERE id = ?').get(runId);
+        if (!run) return json(404, { error: 'no such run' });
+        return json(200, {
+          run,
+          meta: db.prepare('SELECT * FROM scan_meta WHERE runId = ?').get(runId) ?? null,
+          pages: db.prepare('SELECT url, finalUrl, title, status, error FROM pages WHERE runId = ?').all(runId),
+          bySeverity: db.prepare('SELECT severity, COUNT(*) n FROM findings WHERE runId = ? GROUP BY severity').all(runId),
+          topRules: db.prepare(`
+            SELECT ruleId, COUNT(*) n FROM findings WHERE runId = ?
+            GROUP BY ruleId ORDER BY n DESC LIMIT 10
+          `).all(runId),
+          incidents: db.prepare('SELECT * FROM scan_incidents WHERE runId = ?').all(runId),
+        });
+      }
 
       if (url.pathname === '/api/summary' && req.method === 'GET') {
         const totals = db.prepare('SELECT COUNT(*) n, SUM(finishedAt IS NOT NULL) done FROM runs').get();
@@ -81,17 +192,73 @@ export function startFunnelUi({ port = 4322, dbPath = 'runs/public.sqlite' } = {
         const visits = db.prepare('SELECT COUNT(*) n, SUM(lastSeen != firstSeen) returned FROM visits').get();
         const scanners = db.prepare('SELECT COUNT(DISTINCT ipHash) n FROM scan_meta WHERE ipHash IS NOT NULL').get();
         const scans = db.prepare('SELECT COUNT(*) n FROM scan_meta').get();
+        const bySeverity = db.prepare('SELECT severity, COUNT(*) n FROM findings GROUP BY severity').all();
+        const byHour = db.prepare(`
+          SELECT CAST(substr(startedAt, 12, 2) AS INTEGER) hour, COUNT(*) n
+          FROM runs WHERE startedAt IS NOT NULL GROUP BY hour
+        `).all();
+        // Outcome is derived, not stored: a run that finished with no note is
+        // a clean pass, a note beginning "scan failed" is an error, and any
+        // other note is the crawl stopping itself (bot-blocked, robots, etc).
+        const outcomes = db.prepare(`
+          SELECT CASE
+            WHEN notes LIKE 'scan failed%' THEN 'errored'
+            WHEN notes IS NOT NULL THEN 'blocked'
+            WHEN finishedAt IS NOT NULL THEN 'completed'
+            ELSE 'running' END outcome,
+          COUNT(*) n FROM runs GROUP BY outcome
+        `).all();
+        // Hostnames need real URL parsing, which SQLite has none of — and the
+        // row count here is small enough that doing it in JS costs nothing.
+        const domains = new Map();
+        for (const { seedUrl } of db.prepare('SELECT seedUrl FROM runs WHERE seedUrl IS NOT NULL').all()) {
+          let host;
+          try { host = new URL(seedUrl).hostname; } catch { host = seedUrl; }
+          domains.set(host, (domains.get(host) ?? 0) + 1);
+        }
+        const topDomains = [...domains.entries()]
+          .map(([host, n]) => ({ host, n })).sort((a, b) => b.n - a.n).slice(0, 8);
+
+        const durations = db.prepare('SELECT startedAt, finishedAt FROM runs WHERE finishedAt IS NOT NULL').all()
+          .map((r) => (Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000)
+          .filter((s) => Number.isFinite(s) && s >= 0)
+          .sort((a, b) => a - b);
+
+        // A funnel is only honest if every stage counts the SAME population
+        // getting smaller. Counting visitors then total scans produces stages
+        // that grow — "490% continued" — because one person can scan five
+        // times. So every stage here is distinct people.
+        const journey = {
+          visitors: visits.n ?? 0,
+          scanned: scanners.n ?? 0,
+          completed: db.prepare(`
+            SELECT COUNT(DISTINCT m.ipHash) n FROM scan_meta m
+            JOIN runs r ON r.id = m.runId
+            WHERE r.finishedAt IS NOT NULL AND r.notes IS NULL AND m.ipHash IS NOT NULL
+          `).get().n,
+          clicked: db.prepare('SELECT COUNT(DISTINCT ipHash) n FROM click_events WHERE ipHash IS NOT NULL').get().n,
+        };
+
         return json(200, {
           totalScans: totals.n ?? 0,
           completionRate: totals.n ? (totals.done ?? 0) / totals.n : 0,
           scansByDay: byDay,
-          devices, regions, clicks,
+          journey,
+          devices, regions, clicks, bySeverity, byHour, outcomes, topDomains,
+          duration: {
+            n: durations.length,
+            p50: percentile(durations, 0.5),
+            p95: percentile(durations, 0.95),
+          },
           retention: {
             visitors: visits.n ?? 0,
             returning: visits.returned ?? 0,
             rate: visits.n ? (visits.returned ?? 0) / visits.n : 0,
             avgScansPerVisitor: scanners.n ? (scans.n ?? 0) / scanners.n : 0,
           },
+          totalFindings: db.prepare('SELECT COUNT(*) n FROM findings').get().n,
+          rules: listRules(db).length,
+          openIncidents: listIncidents(db).length,
           funding: fundingState(currentRaised()),
         });
       }

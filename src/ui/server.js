@@ -10,6 +10,8 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, resolve, sep, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, listRuns, getFindings, getFixes, getReviewQueue, pinRun, deleteRun, runIdsForClient } from '../db.js';
+import { handleAuth, hasPassword } from '../auth.js';
+import { createIpLimiter } from '../public/ipLimiter.js';
 import { writeHtml, writeJson, writeDiffHtml, writeVpat, buildReport, diffRuns } from '../report/index.js';
 import { runDir } from '../scan/index.js';
 import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
@@ -42,6 +44,10 @@ const shotUrl = (p) => (p ? '/' + String(p).replace(/\\/g, '/').replace(/^\/+/, 
 export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
   const dbPath = cfg.db?.path ?? 'runs/audit.sqlite';
   const rootAbs = resolve(root);
+  // Brute-force budget for the login form. Generous for a human on their own
+  // tailnet, ruinous for a guessing loop.
+  const loginLimiter = createIpLimiter({ max: 20, windowMs: 15 * 60 * 1000 });
+  setInterval(() => loginLimiter.sweep(), 15 * 60 * 1000).unref();
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${port}`);
@@ -61,6 +67,18 @@ export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
     };
 
     try {
+      // The password gate, before anything else can be reached. A no-op until
+      // `node src/cli.js set-password` has been run — see src/auth.js for why
+      // an unconfigured install must not lock its own operator out.
+      if (await handleAuth(req, res, {
+        url, ip: req.socket.remoteAddress ?? 'unknown',
+        limiter: loginLimiter, title: 'Contrast',
+      })) return;
+
+      if (url.pathname === '/api/auth' && req.method === 'GET') {
+        return json(200, { passwordSet: hasPassword() });
+      }
+
       // ------------------------------------------------------- job control
       if (url.pathname.startsWith('/api/jobs')) {
         // SSE stream is a GET; everything else that touches a job is a POST

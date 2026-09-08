@@ -6,6 +6,7 @@
 <title>Contrast — funnel monitoring</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='4' fill='%23cc785c'/><path d='M8 3a5 5 0 000 10z' fill='%23141413'/></svg>">
 <link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/funnel.css">
 </head>
 <body>
 <a class="skip-link" href="#content">Skip to main content</a>
@@ -16,6 +17,10 @@
   </span>
   <b style="font-family:var(--font-display);font-size:var(--fs-lg)">Contrast</b>
   <span class="dim">funnel monitoring — a private view of the public scanner's own data</span>
+  <span style="margin-left:auto;display:flex;gap:var(--s-2)">
+    <button class="btn sm" id="reload">Refresh</button>
+    <a class="btn sm" href="/logout">Sign out</a>
+  </span>
 </header>
 
 <main class="content" id="content" role="main"></main>

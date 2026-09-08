@@ -3,8 +3,14 @@ sessions/
 runs/
 *.sqlite
 .env
+# Per-install state, not source. Committing it meant every deployment
+# inherited the last committer's client list without the runs/ that give it
+# meaning — see config.example.json, which loadConfig() seeds from.
+config.json
 config.json.bak
 config.json.tmp
+# The dashboard/funnel login password (hashed, then encrypted at rest).
+auth/
 
 # OS cruft
 .DS_Store

@@ -1,6 +1,17 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
-export function loadConfig(path = 'config.json') {
+/**
+ * config.json is per-install state, not source — it is gitignored, so a fresh
+ * clone (or a container whose bind mount starts empty) has none. Seed it from
+ * the checked-in example rather than crashing: the alternative is every new
+ * deployment inheriting whichever client list the last committer happened to
+ * have, which is exactly how a VPS ends up listing 22 sites it has no data for.
+ */
+export function loadConfig(path = 'config.json', example = 'config.example.json') {
+  if (!existsSync(path) && existsSync(example)) {
+    writeFileSync(path, readFileSync(example, 'utf8'));
+    console.log(`no ${path} — seeded one from ${example}`);
+  }
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 

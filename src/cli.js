@@ -36,6 +36,7 @@ usage: node src/cli.js <command>
   runs                            list runs
   ui     [port]                   browse runs, reports and diffs at http://localhost:4321
   funnel [port]                   monitor the public scanner's usage/db at http://localhost:4322
+  set-password                    set the login password for both private panels
 `;
 
 const need = (v, msg) => {
@@ -234,6 +235,25 @@ switch (cmd) {
   case 'funnel': {
     const { startFunnelUi } = await import('./funnel/server.js');
     startFunnelUi({ port: Number(args[0]) || 4322 });
+    break;
+  }
+
+  // The only way in: a gated dashboard cannot be the place you set the
+  // password that gates it.
+  case 'set-password': {
+    const { setPassword, authDir } = await import('./auth.js');
+    const { createInterface } = await import('node:readline/promises');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const pw = args[0] ?? (await rl.question('New dashboard password (min 8 chars): '));
+    const again = args[0] ?? (await rl.question('Again: '));
+    rl.close();
+    if (pw !== again) {
+      console.log('those did not match — nothing changed');
+      process.exit(1);
+    }
+    setPassword(pw, authDir());
+    console.log(`password set → ${authDir()}/.auth.json (encrypted at rest)`);
+    console.log('every existing signed-in session was just invalidated.');
     break;
   }
 

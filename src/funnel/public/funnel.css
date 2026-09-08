@@ -1,0 +1,63 @@
+/* Only what app.css does not already provide. Tokens only — no literal
+   colours, so light and dark both come out right without a second palette. */
+
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--s-4); margin: var(--s-4) 0 }
+.grid-2 > .card { margin: 0 }
+
+#panel > .card, #panel > .grid-2 > .card { margin-bottom: var(--s-4) }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap }
+.cap { font-size: var(--fs-xs); margin: var(--s-1) 0 var(--s-3); max-width: 62ch }
+
+/* ------------------------------------------------------------ tooltip */
+#tip {
+  position: fixed; z-index: 90; pointer-events: none;
+  background: var(--text); color: var(--canvas);
+  font-size: var(--fs-xs); font-family: var(--font-mono);
+  padding: 5px var(--s-2); border-radius: var(--r-2); box-shadow: var(--shadow-2);
+  max-width: 320px;
+}
+
+/* -------------------------------------------------------------- tables */
+.table-scroll { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: var(--r-3) }
+table.data { width: 100%; border-collapse: collapse; font-size: var(--fs-sm) }
+table.data th, table.data td { text-align: left; padding: 7px var(--s-3); border-bottom: 1px solid var(--line); vertical-align: top }
+/* The header has to survive scrolling — these tables are meant to be paged
+   through, and a column you can no longer name is unreadable. */
+table.data thead th { position: sticky; top: 0; background: var(--surface-2); z-index: 1; font-weight: 600; white-space: nowrap }
+table.data tbody tr:last-child td { border-bottom: 0 }
+table.data tbody tr:hover td { background: var(--surface-2) }
+table.data td.mono { font-family: var(--font-mono); font-size: var(--fs-xs); word-break: break-word; max-width: 42ch }
+
+.list-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; padding: var(--s-3) 0; border-bottom: 1px solid var(--line) }
+.list-row:last-child { border-bottom: 0 }
+
+.chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text) }
+
+/* -------------------------------------------------- hour-of-day chart */
+.hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; margin-top: var(--s-3) }
+.hour { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-1) }
+.hour-bar { display: flex; align-items: flex-end; height: 90px; background: var(--surface-2); border-radius: var(--r-1); overflow: hidden }
+.hour-bar > i { display: block; width: 100%; background: var(--accent); border-radius: var(--r-1); transition: height var(--t-3) var(--ease) }
+.hour-bar:hover { outline: 2px solid var(--accent); outline-offset: 1px }
+.hour-tick { font-size: 9px; text-align: center; font-family: var(--font-mono) }
+
+/* -------------------------------------------------------- funnel bars */
+/* app.css's .bar is a <span> sized by the grid column it normally sits in.
+   Standing on its own it is an inline box with no width, so the fill inside
+   escapes the card entirely. Anywhere it is not a grid item, make it a block. */
+.funnel-stage .bar, .card > .bar { display: block; width: 100% }
+
+.funnel-stage { margin-bottom: var(--s-3) }
+.funnel-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); font-size: var(--fs-sm); margin-bottom: 5px }
+.funnel-head .mono { font-family: var(--font-mono); font-size: var(--fs-sm) }
+.funnel-stage .bar { height: 16px }
+.funnel-stage .bar > i { background: var(--accent) }
+.funnel-drop { display: block; font-size: var(--fs-xs); margin-top: 5px; padding-left: var(--s-2) }
+
+/* Charts get room to breathe and never force the page sideways. */
+#panel svg { display: block; max-width: 100% }
+
+@media (max-width: 700px) {
+  .hours { grid-template-columns: repeat(12, 1fr) }
+  .table-scroll { max-height: 320px }
+}
