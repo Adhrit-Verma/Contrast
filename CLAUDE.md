@@ -2,6 +2,41 @@
 
 Persistent context for future sessions. Read this before touching the codebase.
 
+## Documentation map — read the right one, update the right one
+
+| Doc | Owns | Update when |
+|---|---|---|
+| **`CLAUDE.md`** (this file) | Orientation, current state per phase, gotchas | The state of a phase changes, or a new gotcha is learned |
+| **`docs/ARCHITECTURE.md`** | Services, ports, data stores, trust boundaries | A service, port, store or boundary changes |
+| **`docs/DATA-FLOW.md`** | How data moves at runtime, step by step | A request path or pipeline step changes |
+| **`docs/DECISIONS.md`** | Why it is this way; what would change it | You make a call a future reader could second-guess |
+| **`docs/TIMELINE.md`** | When each thing shipped, and what bugs it caught | **Every** shipped change. One entry, newest first |
+| `DESIGN.md` | Visual system, tokens, components | The design system changes |
+| `DEPLOY.md` | VPS runbook | Deployment steps change |
+| `README.md` | User-facing product doc | User-visible behaviour changes |
+| **`docs/private/`** *(gitignored)* | Pricing, budget, GTM, vendor reasoning, roadmap | Any commercial decision changes |
+
+**Rule 1:** a change is not done until `docs/TIMELINE.md` has an entry for it. If the change
+was a judgment call, `docs/DECISIONS.md` gets one too. Never edit an old decision — supersede it.
+
+**Rule 2:** the tracked docs describe **what exists and how it works**. Anything about what
+it *costs*, what it *sells for*, who it is *sold to*, or what is *coming next* belongs in
+`docs/private/`. When in doubt, private.
+
+## Business direction — not in this repo
+
+**This repository is public.** Commercial context — pricing, budget, vendor choice and
+reasoning, go-to-market, competitive positioning, and unshipped monetisation mechanics —
+lives in **`docs/private/`**, which is gitignored and exists only on the operator's machine
+and the VPS.
+
+If you are working on anything with a commercial dimension, read `docs/private/DIRECTION.md`
+first. If it is missing (fresh clone), **stop and ask** rather than inferring product
+direction from the code — the current direction reverses at least one earlier decision, and
+guessing will reintroduce it.
+
+Never move content from `docs/private/` into a tracked file.
+
 ## What this is
 
 Contrast is an AI-assisted web accessibility auditing tool for **teams of human auditors**,
@@ -74,7 +109,10 @@ test coverage and this-environment verification, not missing functionality.
    and interrupt handling have never been exercised by anything but manual runs (per the
    README's claims). This is the single biggest coverage gap in the repo.
 
-**Test suite**: 68/68 pass (`npm test`), after `npm install` — `node_modules` was not present
+**Test suite**: **120/120 pass** as of 2026-09-09 (was 68/68 at this audit). The paragraph
+below describes the original 2026-09-04 audit, kept for the `npm install` gotcha it records.
+
+68/68 passed (`npm test`), after `npm install` — `node_modules` was not present
 before this audit (fresh checkout / never installed in this environment). Before installing,
 5 of 9 test files failed outright with `ERR_MODULE_NOT_FOUND` (missing `puppeteer` and other
 deps); after `npm install` all 68 pass, including the 5 real-Chrome tests in `verify.test.js`
@@ -370,89 +408,6 @@ Recall against criteria that do have a running rule is far higher.
 
 ## Status log
 
-*(newest first)*
-
-- **2026-09-04** — Step 9 complete, checklist done: drafted launch assets in `docs/launch/`
-  (Product Hunt tagline + description + first comment, G2/Capterra listing copy, a one-page
-  IT-services pitch grounded in the real EAA/ADA compliance angle, and a cold email template).
-  The checklist's own "do this now" was verified, not eyeballed: a first email draft measured
-  at 42 words read aloud in 17–19s at normal/careful pace, over the 10–15s target; cut to 28
-  words and re-measured at 11.2–12.9s before shipping. All five `## Done condition` items are
-  now met: 7 phases verified, real accuracy numbers (87%/37% over 931 ACT cases), redeployed
-  and reachable (Tailscale for the admin dashboard, bare IP for the public funnel), the free
-  funnel + landing page are live, and the audit writeups + launch assets are ready to publish.
-
-- **2026-09-04** — Fixed CI hanging indefinitely on every push. Root cause: the `test` job ran
-  inside `ghcr.io/puppeteer/puppeteer` with `--user root` (needed so GitHub's bind-mounted
-  workspace was writable), but Chrome refuses to run its own sandbox as root without
-  `--no-sandbox` — it hangs rather than failing cleanly. Confirmed locally by reproducing the
-  exact container + flags and watching `test/blocked.test.js` sit stuck on the same PID for 20+
-  minutes. Fixed by dropping the custom container entirely: `.github/workflows/ci.yml`'s `test`
-  job now runs on a plain `ubuntu-latest` runner with a normal `npm ci`/`npm test`, matching
-  Puppeteer's own CI guidance and what already works on every contributor's machine. Also
-  redesigned the public landing page from user feedback (carousel arrows losing to hovered
-  cards — a real CSS paint-order bug, not a guess; a bento-grid span miscalculation; a
-  low-impact visitor counter) — verified with axe-core and Puppeteer screenshots at 5 widths
-  before shipping, informed by researched 2026 SaaS landing-page and WCAG typography guidance
-  rather than eyeballed.
-
-- **2026-09-04** — Step 8 complete: ran real deterministic scans against 20 major Indian
-  company sites, published 8 usable writeups + a summary in `docs/audits/`. 11 sites correctly
-  triggered the bot-protection safety stop; 1 (IndiGo) returned a 200-status Akamai failover
-  page that `looksBlocked()` didn't catch — found by hand before publishing and excluded, now
-  logged as a real, open gap in that detector. Every published number was cross-checked
-  directly against `runs/audit.sqlite`, not console output. 87/87 tests unaffected (content +
-  config only, no library code changed).
-
-- **2026-09-04** — Step 7 complete: added the landing page at `/` on the same public server from
-  Step 6, moved the scan tool to `/scan`. Verified with a real headless-Chrome check (not just
-  reading the HTML) that the CTA clears the fold on three phone sizes and that axe-core reports
-  zero violations on both pages, both widths — which caught a real missing-`<main>`-landmark bug
-  before it shipped. 87/87 tests still pass (no library code changed, just the public site).
-
-- **2026-09-04** — Step 6 complete: built the public scan funnel as a fully separate server
-  (`src/public/`) with an SSRF guard, per-IP rate limiting, a global concurrency gate, and a
-  minimal standalone paste-a-URL page. Real end-to-end verification (not just unit tests) caught
-  two genuine bugs — rate-limit checked before validation (typos burned quota), and a runId
-  mismatch that made every status/report lookup 404 — both fixed and re-verified. Confirmed by
-  fetching a real admin runId through the public server that the two services' run histories are
-  actually isolated, not just nominally separate. 87/87 tests pass. Bare IP:port, no TLS, per the
-  operator's own choice; revisit before Step 7 needs a real domain anyway.
-
-- **2026-09-04** — Step 5 in progress: added Dockerfile, docker-compose.yml (`network_mode:
-  host`), .github/workflows/ci.yml (test + build/push to GHCR), and DEPLOY.md (Tailscale Serve
-  runbook — no domain, no public TLS, Basic Auth over HTTP explicitly rejected as unsafe).
-  Built and verified the image locally: Puppeteer launches, dashboard serves real HTML,
-  better-sqlite3's native binary works despite an npm install-scripts warning. Caught and fixed
-  two real bugs pre-VPS: wrong base image tag (24.10.0 vs. the lockfile's actual 25.10.0) and an
-  ENV-declared-after-RUN ordering bug that silently disabled the Chromium-skip flag. VPS-side
-  steps (Docker/Tailscale install, first boot, live end-to-end scan) are documented but not yet
-  run — no access to that VPS from this session. 78/78 tests still pass (infra-only changes).
-- **2026-09-04** — Step 4 complete: added `ai.perRunCap` (default 300, alongside the existing
-  daily cap), broadened retry/backoff from 429-only to all transient failures (5xx, dropped
-  connections) via `isTransient()`, and closed two real structured-logging gaps — pages that
-  fail before scanning now get a `pages` row instead of vanishing, and `runs.notes` (an
-  existing unused column) now records why a crawl was abandoned. AI task errors from the CLI
-  paths now escalate to `review_queue` like the graph path already did, via a newly shared
-  `insertReview()`. Verified bot-block and dead-URL handling empirically with a new
-  `test/blocked.test.js` (real browser, local server — no dependency on a third party's
-  defenses still being up later) rather than building new mechanism, since it already worked.
-  78/78 tests pass.
-- **2026-09-04** — Step 3 complete: added `scripts/accuracy.mjs` (ACT Rules precision/recall
-  harness) and WCAG coverage classification in reports (JSON + HTML + VPAT remarks). Measured
-  87% precision / 37% recall over 931 ACT cases. The harness immediately earned itself by
-  catching a real overstatement bug in `automatedCriteria()` — it had been counting axe's
-  experimental, deprecated and AAA rules, which never run; coverage dropped from a claimed 34%
-  to a true 27%. 73/73 tests pass. Weakest real result: 3.1.1 at 56% precision (`lang` matching
-  false alarms), then 4.1.2 at 74%.
-- **2026-09-04** — Step 2: skipped, per its own "skip if step 1 found everything solid" clause.
-  No phase was partially working or stubbed — nothing to fix. The one real gap (zero test
-  coverage on `src/graph/`) isn't cheaply fixable without either an invasive refactor to
-  export internal node functions or a heavy real-browser+real-Gemini integration test, so it
-  wasn't manufactured into this step. Worth a dedicated task later if it becomes load-bearing.
-- **2026-09-04** — Step 1 complete: full repo audit, `CLAUDE.md` created. All 7 phases
-  code-complete; 68/68 tests pass after `npm install` (was not previously installed here).
-  Confirmed no Render config exists in this repo. Confirmed Gemini key is encrypted-at-rest
-  or env-var only, rate-limited with a daily cap but no per-scan cap, and tier enforcement is
-  advisory only. Biggest gap found: `src/graph/` (Phase 7 orchestration) has zero automated
-  test coverage.
+Moved to **[`docs/TIMELINE.md`](docs/TIMELINE.md)** — one chronological record, updated on
+every shipped change, including the bugs each change caught and the standing gaps not yet
+closed. Do not keep a second log here; it will drift.

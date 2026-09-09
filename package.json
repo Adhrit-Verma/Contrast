@@ -10,7 +10,9 @@
     "accuracy": "node scripts/accuracy.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
     "ui": "node src/cli.js ui",
-    "public": "node src/public/server.js"
+    "public": "node src/public/server.js",
+    "funnel": "node src/funnel/server.js",
+    "set-password": "node src/cli.js set-password"
   },
   "dependencies": {
     "@axe-core/puppeteer": "^4.13.0",

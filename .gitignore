@@ -12,6 +12,17 @@ config.json.tmp
 # The dashboard/funnel login password (hashed, then encrypted at rest).
 auth/
 
+# Business strategy — NEVER commit. This repo is public.
+# Pricing, margins, runway, GTM, competitor analysis, vendor negotiations and
+# unshipped monetisation mechanics are all things a competitor reads for free
+# and a prospect reads before a pricing conversation. Technical docs live in
+# docs/ and are fine public; anything commercial lives here and stays local.
+docs/private/
+# Launch/sales assets: cold email, pitch decks, marketplace listings. These were
+# public until 2026-09-09 — they remain in git history, so treat anything in here
+# written before that date as already disclosed.
+docs/launch/
+
 # OS cruft
 .DS_Store
 Thumbs.db
