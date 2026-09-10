@@ -16,6 +16,11 @@ Keep "Caught" honest. The bug list is what stops the same mistake twice.
 
 ---
 
+### 2026-09-10 — Closed three standing gaps: failover pages, SSRF redirects, graph routing
+**Shipped.** `looksBlocked()` now catches bot-defense fallback pages that answer HTTP 200 with no challenge wording — by vendor asset marker (`akamfailoverpage`, Incapsula, cdn-cgi, PerimeterX), or by three weak signals together (no title AND under 200 chars AND no navigation). The SSRF guard gained `createHostGuard()`, wired into the public scanner's request interceptor, so every redirect and subresource re-resolves rather than trusting the one check on the URL the visitor typed; it fails closed if the check itself throws. `src/graph/`'s three routing decisions are extracted, named and tested. 22 new tests, 181/181 passing.
+**Caught.** Nothing new broke, but the false-positive direction got more test weight than the true-positive one: over-flagging a real page would silently discard a customer's actual findings, which is worse than missing a failover shell. Four tests cover pages that must *not* be flagged. Also dropped a test that asserted on LangGraph's internal spec shape — testing the library, not our logic.
+**Decision.** #26 (a blocked-page heuristic must fail toward scanning).
+
 ### 2026-09-10 — Wired the AI router into both run paths; unified the C mark
 **Shipped.** `cli.js` and `graph/run.js` now build the provider + budget instead of a bare Gemini client, so the paid model, free fallback, spending ceiling and degrade path apply to every assessment. Embeddings stay on Gemini (the knowledge base is indexed with them). Both paths print remaining budget before assessing. The public pages, generated reports, audit writeups, login page and funnel panel all use the dashboard's animated C mark, and the scan page's mark sweeps while a scan runs. 7 new wiring tests, 159/159 passing.
 **Caught.** The previous session's modules were **dead code** — nothing imported `provider.js`, `budget.js` or `openai.js`, and `monthlyCeilingUsd` was a **decorative control**: settable in the UI, persisted to config, read by nothing. A ceiling of $5 would have had no effect. Found only by grepping for importers rather than trusting the summary. Also: the new Vimoksh footer used `opacity:.8` and failed contrast at 3.41:1 — the same mistake as the ghost cards earlier the same day, caught the same way.
@@ -95,9 +100,10 @@ Carried forward until closed. Add here when you find one you are not fixing toda
 
 | Gap | Since | Note |
 |---|---|---|
-| `src/graph/` has no automated tests | 2026-09-04 | Largest coverage gap; needs real-browser + real-API integration test |
-| `looksBlocked()` misses 200-status failover pages | 2026-09-04 | Found via IndiGo/Akamai; heuristic on empty-title + near-empty body at 200 |
-| SSRF guard checks initial resolution only | 2026-09-04 | Not full DNS-rebinding protection |
-| No TLS on the public scanner | 2026-09-04 | Bare IP, no domain yet |
+| No TLS on the public scanner | 2026-09-04 | Bare IP, no domain yet — blocked on buying `vimoksh.com` |
+| DNS rebinding is narrowed, not eliminated | 2026-09-10 | Every request re-resolves, but a TOCTOU window remains between our resolve and Chrome's connect. Closing it fully needs IP pinning at the socket, which Puppeteer makes awkward |
+| `src/graph/` nodes are still untested | 2026-09-10 | The routing is now covered; the nodes themselves need a real browser + real key, so they remain exercised only by manual runs |
+
+**Closed 2026-09-10:** `looksBlocked()` 200-status failover detection · SSRF redirect/subresource re-checking · `src/graph/` routing coverage.
 
 Commercial open items are tracked in `docs/private/DIRECTION.md`.

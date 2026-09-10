@@ -36,6 +36,11 @@ Each entry: **Decision → Why → What would change this.** If you find yoursel
 **Why.** axe + a11y tree + keyboard trace need no API at all and already constitute a real report — that is exactly what the free scanner ships today. A tool that sometimes refuses teaches visitors it is unreliable; a tool that says what it did and did not check stays trustworthy.
 **What would change this.** Nothing. This follows directly from #1 — a report is honest about its own coverage or it is not worth issuing.
 
+### #26 — A blocked-page heuristic must fail toward scanning · 2026-09-10
+**Decision.** A vendor's own failover asset path blocks on its own — near-zero false-positive risk. Every weaker signal (no title, almost no text, no navigation) must hold *together* before a page is called blocked. Four tests cover pages that must **not** be flagged.
+**Why.** The two failure directions are not symmetric. Missing a failover page publishes findings about the wrong page — bad, and caught by review. Over-flagging a real page silently discards a customer's genuine findings and reports their site as unscannable — worse, and invisible. A legitimately sparse page essentially always has a title *or* navigation, so requiring all three signals costs almost no detection.
+**What would change this.** A real failover page that has a title and navigation. Add its vendor marker to `FAILOVER_ASSET` rather than loosening the combined rule.
+
 ### #25 — A setting that nothing reads is worse than no setting · 2026-09-10
 **Decision.** A control does not ship until something consumes it. `ceilingFromConfig()` is the single resolver for the spending ceiling, and `test/wiring.test.js` pins that the number the Settings tab writes is the number that actually refuses a call.
 **Why.** `monthlyCeilingUsd` shipped as a field in config, a row in the settings API and an input in the UI — read by nothing. A user could set their ceiling to $5 and spend without limit, while believing they were capped. An absent control is a known gap; a decorative one is a false guarantee, and it is the kind that is only discovered by a bill.

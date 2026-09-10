@@ -36,16 +36,51 @@ export function classifyAddress(ip, family) {
   return family === 6 ? classifyV6(ip) : classifyV4(ip);
 }
 
+/** @returns {Promise<string|null>} why the host is unsafe, or null if it is fine */
+export async function hostProblem(hostname) {
+  let addresses;
+  try {
+    addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+  } catch (err) {
+    return `could not resolve ${hostname}: ${err.message}`;
+  }
+  // EVERY answer must be public. A name that returns one public and one private
+  // address is not safe — the browser may pick either.
+  for (const { address, family } of addresses) {
+    const why = classifyAddress(address, family);
+    if (why) return `${hostname} resolves to a ${why} address (${address})`;
+  }
+  return null;
+}
+
+/**
+ * Re-checks every host the browser actually reaches, not just the one the
+ * visitor typed.
+ *
+ * `assertPublicUrl()` runs once, before navigation. It cannot see a redirect
+ * to an internal address, a subresource pointing at cloud metadata, or a name
+ * whose DNS answer changes after the check. This guard runs on each request,
+ * which closes the first two outright and narrows the third to the gap between
+ * our resolve and Chrome's connect.
+ *
+ * Answers are cached per scan: a page pulls dozens of subresources from a
+ * handful of hosts, and re-resolving each one would add latency for nothing.
+ */
+export function createHostGuard({ ttlMs = 60_000, now = () => Date.now() } = {}) {
+  const cache = new Map(); // hostname -> { why, at }
+  return async function checkHost(hostname) {
+    const hit = cache.get(hostname);
+    if (hit && now() - hit.at < ttlMs) return hit.why;
+    const why = await hostProblem(hostname);
+    cache.set(hostname, { why, at: now() });
+    return why;
+  };
+}
+
 /**
  * Resolve a URL's hostname and refuse anything that resolves to a private,
- * loopback, link-local, or CGNAT/Tailscale address.
- * ponytail: checks the INITIAL resolution only — a DNS-rebinding attack (the
- * name resolves safely here, then to a private IP by the time Chrome actually
- * connects) is a known, real gap. Closing it fully needs a network-level guard
- * (a resolving proxy, or pinning the resolved IP into the request) — worth
- * doing before this tool sees real hostile traffic at scale, not needed for a
- * first public funnel with per-IP rate limiting and a low page cap already
- * bounding the blast radius.
+ * loopback, link-local, or CGNAT/Tailscale address. The first gate; the
+ * per-request guard above is the one that survives a redirect.
  * @returns {Promise<string>} the normalised href, if it passes
  */
 export async function assertPublicUrl(rawUrl) {
@@ -58,15 +93,7 @@ export async function assertPublicUrl(rawUrl) {
   if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('only http/https URLs are allowed');
   if (u.username || u.password) throw new Error('URLs with embedded credentials are not allowed');
 
-  let addresses;
-  try {
-    addresses = await dns.lookup(u.hostname, { all: true, verbatim: true });
-  } catch (err) {
-    throw new Error(`could not resolve ${u.hostname}: ${err.message}`);
-  }
-  for (const { address, family } of addresses) {
-    const why = classifyAddress(address, family);
-    if (why) throw new Error(`${u.hostname} resolves to a ${why} address (${address}) — not scannable from a public tool`);
-  }
+  const why = await hostProblem(u.hostname);
+  if (why) throw new Error(`${why} — not scannable from a public tool`);
   return u.href;
 }

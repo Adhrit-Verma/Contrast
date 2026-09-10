@@ -17,12 +17,34 @@ import { writeJson, writeHtml, writeVpat } from '../report/index.js';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-const replace = (a, b) => (b === undefined ? a : b);
-const append = (a, b) => [...(a ?? []), ...(Array.isArray(b) ? b : [b])];
+export const replace = (a, b) => (b === undefined ? a : b);
+export const append = (a, b) => [...(a ?? []), ...(Array.isArray(b) ? b : [b])];
 /** Append, but idempotent on id — a resumed checkpoint must not double-count. */
-const appendUnique = (a, b) => {
+export const appendUnique = (a, b) => {
   const seen = new Set((a ?? []).map((x) => x.id));
   return [...(a ?? []), ...(Array.isArray(b) ? b : [b]).filter((x) => x && !seen.has(x.id) && seen.add(x.id))];
+};
+
+// ------------------------------------------------------- routing decisions
+// The graph's conditional edges, named and exported rather than written inline.
+// These three predicates ARE the orchestration: everything else is a phase-1–6
+// function that already has its own tests. The retry cycle in particular is the
+// one place a wrong comparison spends real money in a loop instead of stopping.
+
+/** More pages queued means go round again; otherwise move on. */
+export const afterScanPage = (s) => (s.pagesQueued?.length ? 'scanPage' : 'normalize');
+
+/** A component to fix means fix it; nothing left means write the report. */
+export const afterNextComponent = (s) => (s.currentComponent ? 'retrieveGuidance' : 'report');
+
+/**
+ * Verified → take the next component. Not verified but attempts remain → try
+ * again. Out of attempts → hand it to a human. Never loop forever.
+ */
+export const afterVerify = (s, maxAttempts) => {
+  if (s.verificationResult === 'verified') return 'nextComponent';
+  if (s.fixAttempts < maxAttempts) return 'generateFix';
+  return 'escalateToHuman';
 };
 
 export const AuditState = Annotation.Root({
@@ -248,14 +270,14 @@ export function buildAuditGraph(deps) {
     .addEdge(START, 'login')
     .addEdge('login', 'crawl')
     .addEdge('crawl', 'scanPage')
-    .addConditionalEdges('scanPage', (s) => (s.pagesQueued.length ? 'scanPage' : 'normalize'), {
+    .addConditionalEdges('scanPage', afterScanPage, {
       scanPage: 'scanPage',
       normalize: 'normalize',
     })
     .addEdge('normalize', 'assessWithAI')
     .addEdge('assessWithAI', 'groupComponents')
     .addEdge('groupComponents', 'nextComponent')
-    .addConditionalEdges('nextComponent', (s) => (s.currentComponent ? 'retrieveGuidance' : 'report'), {
+    .addConditionalEdges('nextComponent', afterNextComponent, {
       retrieveGuidance: 'retrieveGuidance',
       report: 'report',
     })
@@ -263,11 +285,7 @@ export function buildAuditGraph(deps) {
     .addEdge('generateFix', 'verifyFix')
     .addConditionalEdges(
       'verifyFix',
-      (s) => {
-        if (s.verificationResult === 'verified') return 'nextComponent';
-        if (s.fixAttempts < maxAttempts) return 'generateFix'; // the cycle LangGraph exists for
-        return 'escalateToHuman';
-      },
+      (s) => afterVerify(s, maxAttempts),
       { nextComponent: 'nextComponent', generateFix: 'generateFix', escalateToHuman: 'escalateToHuman' }
     )
     .addEdge('escalateToHuman', 'nextComponent')

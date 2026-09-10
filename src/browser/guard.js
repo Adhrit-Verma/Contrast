@@ -63,18 +63,41 @@ export function canonical(url) {
 /**
  * Attach the read-only interceptor to a page. MUST NOT be attached during the
  * manual login flow — the auditor's credential POST would be blocked.
+ *
+ * `hostCheck` is optional and async: given a hostname it returns a reason to
+ * refuse, or null. The public scanner supplies one so that a redirect or a
+ * subresource pointing at an internal address is refused at request time —
+ * the initial URL check cannot see either. Nothing is passed on the admin
+ * path, where the operator chose the target themselves.
+ *
  * @param {import('puppeteer').Page} page
+ * @param {(hostname: string) => Promise<string|null>} [hostCheck]
  */
-export async function attachReadOnlyGuard(page, crawlCfg, onBlocked = () => {}) {
+export async function attachReadOnlyGuard(page, crawlCfg, onBlocked = () => {}, hostCheck = null) {
   await page.setRequestInterception(true);
-  page.on('request', (req) => {
+  page.on('request', async (req) => {
     if (req.isInterceptResolutionHandled()) return;
     const reason = requestRule(req.url(), req.method(), crawlCfg);
     if (reason) {
       onBlocked(req.url(), req.method(), reason);
       req.abort('blockedbyclient').catch(() => {});
-    } else {
-      req.continue().catch(() => {});
+      return;
     }
+    if (hostCheck) {
+      let host = null;
+      try { host = new URL(req.url()).hostname; } catch { /* data:/blob: — no host to check */ }
+      if (host) {
+        // Fail closed: if the check itself throws, refuse the request rather
+        // than letting an unverified host through on an error path.
+        let why;
+        try { why = await hostCheck(host); } catch (err) { why = `host check failed: ${err.message}`; }
+        if (why) {
+          onBlocked(req.url(), req.method(), why);
+          req.abort('blockedbyclient').catch(() => {});
+          return;
+        }
+      }
+    }
+    req.continue().catch(() => {});
   });
 }

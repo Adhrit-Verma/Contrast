@@ -67,6 +67,12 @@ export const MARK = {
 const CHALLENGE_TEXT =
   /just a moment|attention required|verifying you are human|checking your browser|enable javascript and cookies|access denied|are you a robot/i;
 
+// Vendors serve these fallback shells with a normal 200 and no challenge
+// wording, but they name themselves in the asset paths. Matching the path is
+// far safer than guessing from page shape.
+const FAILOVER_ASSET =
+  /akamfailoverpage|_Incapsula_Resource|\/cdn-cgi\/(challenge-platform|styles)|distil_r_captcha|perimeterx/i;
+
 /**
  * Is this a bot-protection wall rather than the client's site? We never try to
  * defeat one — that is off limits — but scanning the block page and reporting
@@ -86,6 +92,34 @@ export async function looksBlocked(page, status) {
   }
   // A 403/503 with almost no content is a block; a real page with content is not.
   if ([403, 503].includes(status) && body.replace(/\s+/g, '').length < 600) return `HTTP ${status} with no real content`;
+
+  // A bot-defense FALLBACK page: HTTP 200, no challenge wording, and content
+  // plausible enough to scan. IndiGo's Akamai failover shell slipped past every
+  // check above and produced eight real-looking findings that described the
+  // failover page, not the site — caught by hand before publishing, which is
+  // not a control. Two independent signals below, because either alone would
+  // false-flag a legitimately sparse page.
+  const shell = await page
+    .evaluate(() => ({
+      assets: [...document.querySelectorAll('img[src], script[src], link[href]')]
+        .map((el) => el.getAttribute('src') || el.getAttribute('href') || ''),
+      links: document.querySelectorAll('a[href]').length,
+      textLength: (document.body?.innerText ?? '').replace(/\s+/g, '').length,
+    }))
+    .catch(() => null);
+
+  if (shell) {
+    // Strongest signal: the vendor names its own fallback in the asset path.
+    // Near-zero false-positive risk, so it stands alone.
+    const marker = shell.assets.find((a) => FAILOVER_ASSET.test(a));
+    if (marker) return `vendor bot-defense fallback page (asset: ${marker.slice(0, 60)})`;
+
+    // Weaker signals, so all three must hold. A real page essentially always
+    // has a title OR navigation; a failover shell usually has neither.
+    if (!title.trim() && shell.textLength < 200 && shell.links <= 1) {
+      return 'untitled page with no navigation and almost no text — probably a bot-defense fallback';
+    }
+  }
   return null;
 }
 
@@ -178,14 +212,14 @@ export async function interactiveLogin(browser, client, { url = client.seedUrl, 
  * `newPage()` mints additional guarded pages (crawl concurrency, fix verification).
  * Caller closes the browser.
  */
-export async function openSession(client, { onBlocked, autoLogin = true } = {}) {
+export async function openSession(client, { onBlocked, autoLogin = true, hostCheck = null } = {}) {
   const browser = await launch(client.browser);
   const blocked = onBlocked ?? (() => {});
   const newPage = async () => {
     const p = await browser.newPage();
     p.setDefaultNavigationTimeout(client.browser.navTimeoutMs);
     if (client.crawl.userAgent) await p.setUserAgent(await browser.userAgent() + ` ${client.crawl.userAgent}`);
-    await attachReadOnlyGuard(p, client.crawl, blocked);
+    await attachReadOnlyGuard(p, client.crawl, blocked, hostCheck);
     return p;
   };
   const page = await newPage();

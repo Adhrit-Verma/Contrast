@@ -17,7 +17,7 @@ import { scanPage, startRun, finishRun, runDir } from '../scan/index.js';
 import { openDb, getRun, setRunNotes, insertScanMeta, insertIncident, insertClickEvent } from '../db.js';
 import { writeHtml, writeJson } from '../report/index.js';
 import { loadKnowledge, criteriaCatalogue } from '../ai/knowledge.js';
-import { assertPublicUrl } from './ssrf.js';
+import { assertPublicUrl, createHostGuard } from './ssrf.js';
 import { createIpLimiter, createConcurrencyGate } from './ipLimiter.js';
 import { markdownToHtml } from './markdown.js';
 import { fundingState, currentRaised, CURRENCY } from './funding.js';
@@ -220,7 +220,10 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
     const rules = loadActiveRules(db);
     let session;
     try {
-      session = await openSession(client);
+      // Re-check every host the browser actually reaches. assertPublicUrl()
+      // gated the URL the visitor typed; this gates where it redirects to and
+      // what it pulls in — neither of which that first check can see.
+      session = await openSession(client, { hostCheck: createHostGuard() });
       let total = 0;
       await crawl(session, client, async (page, info) => {
         if (matchesRule(rules, { url: info.finalUrl, title: info.title, status: info.status })) {
