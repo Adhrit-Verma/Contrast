@@ -66,6 +66,31 @@ Each entry: **Decision → Why → What would change this.** If you find yoursel
 **Why.** The vendor choice has already changed once. Code that names a provider at the call site turns the next change into a refactor instead of a config edit.
 **What would change this.** Nothing.
 
+### #27 — A report is grouped by issue, not by page · 2026-09-10
+**Decision.** One card per distinct rule + severity + source, sorted worst first, with the pages it appears on as an attribute of the card. Three example instances per card; the rest live in the JSON. Filter chips and a masonry across the width, not an accordion down it.
+**Why.** A 990-finding run is roughly twenty distinct problems repeated across a template. "The same broken ARIA pattern, 55 times" is one thing to fix; 990 stacked cards is what makes a non-technical reader close the tab — and the previous page → component → finding nesting made that worse by hiding everything behind two disclosure triangles. Grouping by issue also matches how the fix is actually made: once, in the template.
+**What would change this.** A report where per-page context matters more than the repeated pattern — a run across genuinely unrelated sites. Add a page filter before reintroducing page grouping.
+
+### #28 — The report headlines the site, and can be shared without copying a URL · 2026-09-10
+**Decision.** The `<h1>` and `<title>` are the scanned site's hostname. Share, Save-as-PDF and JSON are buttons in the hero, above the fold. Sharing uses the Web Share API, falls back to the clipboard, then to a `prompt()` with the URL selectable.
+**Why.** A free scan's `clientId` is literally `contrast-public` — the report headlined our own service instead of the reader's site, which is both useless and self-important. And "copy the address bar and paste it" is not a sharing feature; on a phone it is barely an option. The three-step fallback exists because `navigator.share` is absent on desktop and `navigator.clipboard` is absent on an insecure origin — which is exactly what this service is today.
+**What would change this.** Nothing. If a real domain and TLS arrive, the last fallback stops firing on its own.
+
+### #29 — The org mark is gated the same way the support ask is · 2026-09-10
+**Decision.** "by Vimoksh" appears only on reports from the free public funnel, behind the same `comingSoon || supportUrl` condition as the colophon and the donation ask.
+**Why.** An admin-path report is a deliverable an auditor hands to their own client. Co-branding it with our parent org puts our name in a document that is not ours — the same reason those reports carry no donation ask. This was caught by re-running the gating check after adding the mark, not by reasoning about it.
+**What would change this.** A customer asking for it.
+
+### #30 — The public design system is structural, not atmospheric · 2026-09-10
+**Decision.** Four rules, enforced in `src/public/public/site.css`. Depth is a change of plane (ink / canvas / paper) plus a real column grid — never gradient haze or stacked shadows. A 1px rule is the primary separator; exactly one shadow exists, on the sticky bar, and only once it has lifted. Type carries hierarchy, and the product's own measurements set large in mono are the only ornament. One radius, everywhere. No status pills, no glow, no sliding arrows, no hover-lift, no scroll-reveal.
+**Why.** The previous landing page had assembled the full set of generic-AI-interface tells — a pulsing beta pill, three radial glows, a masked grid, an infinite marquee, a parallax card stack, a floating stat chip, giant ghost numerals. Each is individually defensible and collectively they say "assembled from defaults", which is the worst possible signal for a product whose entire pitch is that it does not paper over what it cannot prove. The generated report was brought onto the same system for the same reason: it is the artifact the site produces, and two design languages across one product reads as two products.
+**What would change this.** A brand refresh decided deliberately, not a component that wants an exception. Rule 5 is the one to check a new element against: if it is not interactive, it does not animate.
+
+### #31 — Motion demonstrates, or it does not ship · 2026-09-10
+**Decision.** Every animation on the public site reproduces something the product actually does, in the shapes the pipeline actually emits. All of them run through `loopDemo()`, which pauses when the tab is hidden or the element scrolls away, exposes a real play/pause control, and under `prefers-reduced-motion` paints the final frame and removes the control. The final frame must be the complete state, so the reduced-motion path is a still of the same thing rather than a degraded version of it.
+**Why.** Decorative motion on a page arguing for rigour is an argument against itself. A fade-up on scroll also bets that JavaScript ran, and pays nothing back if it did. Routing every demo through one driver is what keeps the reduced-motion and off-screen behaviour from being re-decided — and re-forgotten — per animation.
+**What would change this.** Nothing. The height-reservation clause is not negotiable either: an animation that changes its own height reflows the page under the reader, which `loopDemo` prevents by measuring its final frame instead of trusting a hard-coded value.
+
 ---
 
 ## Architecture

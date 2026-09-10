@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plans — Contrast</title>
+<meta name="description" content="One plan you can use today, two being built in the open. The free scanner runs the full deterministic pipeline on five pages. Pro and Team are not open yet and quote no price until they are.">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" id="nav">
+  <div class="nav-row">
+    <a class="brand" href="/">
+      <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>
+      Contrast <span class="by">Vimoksh</span>
+    </a>
+    <a class="btn btn-sm hide-sm" href="/plans" aria-current="page">Plans</a>
+    <a class="btn btn-sm hide-sm" href="/#support">Support</a>
+    <a class="btn btn-sm btn-accent" href="/scan">Scan your site</a>
+  </div>
+</nav>
+
+<main id="main">
+
+<div class="band">
+  <section>
+    <div class="wrap row">
+      <span class="label">Plans</span>
+      <div>
+        <h1 class="h2-lg">One plan you can use today. Two being built in the open.</h1>
+        <p class="lede">The free scanner is not a trial and does not expire. Subscriptions exist to cover the work
+          that costs real money to run — a browser on a server, and tokens at a vendor. They will not open until
+          they actually work, and until they do this page quotes no figure.</p>
+        <div class="btns gap-top">
+          <a class="btn btn-accent" href="/scan">Scan your site free</a>
+          <a class="btn" href="#compare">Compare, line by line</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="plan-grid">
+      <div class="plan-col">
+        <h2>Free scanner</h2>
+        <span class="state state-live">Live now</span>
+        <p class="price">Free<small>no card · no account</small></p>
+        <p class="sell">The complete deterministic pipeline on up to five pages. Everything a machine can prove
+          about your site, with a shareable report at the end of it.</p>
+        <a class="btn btn-accent" href="/scan">Scan your site</a>
+        <p class="after">Rate limited to 3 scans an hour per address, because each one runs a real browser.</p>
+      </div>
+
+      <div class="plan-col soon">
+        <h2>Pro</h2>
+        <span class="state state-soon">Not open yet</span>
+        <p class="price tbd">Priced at launch</p>
+        <p class="sell">The five AI judgment checks on your own site, a crawl that does not stop at five pages,
+          and a diff between this run and the last one.</p>
+        <button class="btn btn-quiet" type="button" data-interest="plans-pro">Tell me when Pro opens</button>
+        <p class="after" data-note-for="plans-pro">One click, nothing to fill in — it records interest, not an
+          email address.</p>
+      </div>
+
+      <div class="plan-col soon">
+        <h2>Team</h2>
+        <span class="state state-soon">Not open yet</span>
+        <p class="price tbd">Priced at launch</p>
+        <p class="sell">Everything in Pro across several sites, crawling behind a login, and reports that carry
+          your branding rather than ours.</p>
+        <button class="btn btn-quiet" type="button" data-interest="plans-team">Tell me when Team opens</button>
+        <p class="after" data-note-for="plans-team">One click, nothing to fill in — it records interest, not an
+          email address.</p>
+      </div>
+
+      <div class="plan-col">
+        <h2>Self-hosted</h2>
+        <span class="state state-soon">Source-available</span>
+        <p class="price tbd">Run it yourself</p>
+        <p class="sell">The whole pipeline is source-available. Bring your own API key, run it on your own
+          hardware, and nothing leaves your network.</p>
+        <a class="btn btn-quiet" href="/audits/summary">Read what it produces</a>
+        <p class="after">Source-available, not open source — see the licence in the repository.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Three demonstrations, one per plan. Each shows what its plan actually does
+     to a site rather than describing it: the same eight-by-three page grid
+     appears in all three, and only the behaviour differs — which is precisely
+     what the comparison is about. -->
+<section class="paper">
+  <div class="wrap">
+    <div class="row head">
+      <span class="label">What changes</span>
+      <div>
+        <h2>The difference, shown on the same site.</h2>
+        <p>Each grid below is one site, twenty-four pages. Watch what each plan is allowed to reach, and what it
+          does once it gets there.</p>
+      </div>
+    </div>
+
+    <div class="cap-row">
+      <figure class="cap">
+        <figcaption class="cap-bar">
+          <span>Free — 5 pages</span>
+          <button class="ctl" type="button" data-ctl="free" aria-pressed="false">Pause</button>
+        </figcaption>
+        <div class="cap-stage">
+          <p class="cap-slot cap-note" id="scope-free" aria-hidden="true">Scope: 5 of 24 pages</p>
+          <div class="pages" id="cap-free" role="img" aria-label="Five pages of a twenty-four page site are scanned; the rest stay out of reach."></div>
+          <p class="cap-note" id="note-free"></p>
+        </div>
+      </figure>
+
+      <figure class="cap">
+        <figcaption class="cap-bar">
+          <span>Pro — whole site, then again next week</span>
+          <button class="ctl" type="button" data-ctl="pro" aria-pressed="false">Pause</button>
+        </figcaption>
+        <div class="cap-stage">
+          <div class="strip cap-slot" id="strip-pro" aria-hidden="true">
+            <div class="bar" data-fill="0"><i></i></div>
+            <div class="bar ok" data-fill="0"><i></i></div>
+          </div>
+          <div class="pages" id="cap-pro" role="img" aria-label="Every page of the site is scanned, then re-scanned later and compared against the previous run."></div>
+          <p class="cap-note" id="note-pro"></p>
+        </div>
+      </figure>
+
+      <figure class="cap">
+        <figcaption class="cap-bar">
+          <span>Team — behind the login, several sites</span>
+          <button class="ctl" type="button" data-ctl="team" aria-pressed="false">Pause</button>
+        </figcaption>
+        <div class="cap-stage">
+          <p class="gate cap-slot" id="gate-team" data-open="0" aria-hidden="true">Login required</p>
+          <div class="pages" id="cap-team" role="img" aria-label="A session is established, then pages behind the login are scanned as well as the public ones."></div>
+          <p class="cap-note" id="note-team"></p>
+        </div>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="row head">
+      <span class="label">Compare</span>
+      <div>
+        <h2>Line by line.</h2>
+        <p>Where a row says a plan does not do something, that is a statement about today, not a tease. The free
+          column is the only one that describes software you can run right now.</p>
+      </div>
+    </div>
+
+    <table class="cmp">
+      <caption>Every row is a capability that exists in the codebase today, on at least one plan</caption>
+      <thead>
+        <tr>
+          <th scope="col"><span class="skip">Capability</span></th>
+          <th scope="col">Free</th>
+          <th scope="col">Pro</th>
+          <th scope="col">Team</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Pages per scan</th>
+          <td data-plan="Free" class="yes">5</td>
+          <td data-plan="Pro">Whole site</td>
+          <td data-plan="Team">Whole site</td>
+        </tr>
+        <tr>
+          <th scope="row">axe-core, accessibility tree, keyboard trace, computed contrast</th>
+          <td data-plan="Free" class="yes">Yes</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Shareable report link and JSON download</th>
+          <td data-plan="Free" class="yes">Yes</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Coverage statement — which criteria no rule can check</th>
+          <td data-plan="Free" class="yes">Yes</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">AI judgment checks — alt-text quality, link text, headings, forms, reading order</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Generated fixes, re-verified in a fresh browser</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes, grounded in your own house patterns</td>
+        </tr>
+        <tr>
+          <th scope="row">Scheduled re-scans with a run-to-run diff</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">VPAT / ACR first draft</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro">Yes</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Crawl behind a login, session encrypted at rest</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro" class="no">No</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Several sites under one account</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro" class="no">No</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Reports with your branding instead of ours</th>
+          <td data-plan="Free" class="no">No</td>
+          <td data-plan="Pro" class="no">No</td>
+          <td data-plan="Team">Yes</td>
+        </tr>
+        <tr>
+          <th scope="row">Available today</th>
+          <td data-plan="Free" class="yes">Yes</td>
+          <td data-plan="Pro" class="no">Not yet</td>
+          <td data-plan="Team" class="no">Not yet</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="paper">
+  <div class="wrap">
+    <div class="row head">
+      <span class="label">Honestly</span>
+      <div>
+        <h2>Three things worth knowing before you wait for a paid plan.</h2>
+      </div>
+    </div>
+    <div class="passes">
+      <article class="pass">
+        <span class="label">On coverage</span>
+        <div>
+          <h3>No plan makes this a compliance claim</h3>
+          <p>Automated testing reaches roughly 30–40% of WCAG issues, and 23 of 86 catalogued criteria have a rule
+            that actually runs. Paying more does not change that arithmetic; it changes how much of your site gets
+            looked at and what happens to the findings afterwards.</p>
+        </div>
+        <span class="yield">true on every plan</span>
+      </article>
+      <article class="pass">
+        <span class="label">On the free tier</span>
+        <div>
+          <h3>It is not a crippled trial</h3>
+          <p>The free scanner runs the same deterministic engine the paid plans do. The limit is five pages and
+            three scans an hour — not a reduced set of checks, and not an expiry date.</p>
+        </div>
+        <span class="yield">no expiry</span>
+      </article>
+      <article class="pass">
+        <span class="label">On timing</span>
+        <div>
+          <h3>There is no launch date, so this page does not invent one</h3>
+          <p>Pro and Team need an account system and a payment processor that do not exist yet. Naming a date we
+            could miss would be the first dishonest thing on this site.</p>
+        </div>
+        <span class="yield">no date · no price</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<div class="band">
+  <section>
+    <div class="wrap row">
+      <span class="label">Meanwhile</span>
+      <div>
+        <h2 class="h2-lg">The free one is running right now.</h2>
+        <p class="lede">One URL, about a minute, no account. If you want the paid work to exist sooner, the goal
+          ladder on the home page is the honest way to say so.</p>
+        <div class="btns gap-top">
+          <a class="btn btn-accent" href="/scan">Scan your site free</a>
+          <a class="btn" href="/#support">See what funding unlocks</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <p>Automated testing catches roughly 30–40% of WCAG issues. Nothing Contrast produces is a claim of
+      conformance — every report says so on the page, not in a footnote.</p>
+    <div class="btns">
+      <a class="btn btn-sm" href="/scan">Free scanner</a>
+      <a class="btn btn-sm" href="/">Home</a>
+      <a class="btn btn-sm" href="/audits/summary">Published audits</a>
+    </div>
+  </div>
+  <p class="wrap colophon">Contrast is a <b>Vimoksh</b> project<span id="visits-line"></span></p>
+</footer>
+
+<script src="/site.js"></script>
+<script>
+// ------------------------------------------------------ capability demos
+// One site, twenty-four pages, three plans. The grids are built here rather
+// than in markup because they are a picture of a behaviour, not content —
+// each carries an aria-label in the HTML saying what it shows, so the loop
+// itself has nothing to announce.
+(function () {
+  var N = 24;
+
+  function grid(el) {
+    var cells = [];
+    for (var i = 0; i < N; i++) {
+      var d = document.createElement('div');
+      d.className = 'pg';
+      el.appendChild(d);
+      cells.push(d);
+    }
+    return cells;
+  }
+  function setAll(cells, fn) { cells.forEach(function (c, i) { c.dataset.s = fn(i) || ''; }); }
+
+  // ---- Free: five pages reachable, the rest permanently out of scope.
+  (function () {
+    var el = document.getElementById('cap-free');
+    var note = document.getElementById('note-free');
+    if (!el) return;
+    var cells = grid(el);
+    var steps = [
+      [700,  function (i) { return i < 5 ? '' : 'locked'; }, 'Crawl starts at the homepage'],
+      [520,  function (i) { return i < 1 ? 'scan' : i < 5 ? '' : 'locked'; }, 'Scanning 1 of 5'],
+      [520,  function (i) { return i < 2 ? (i < 1 ? 'done' : 'scan') : i < 5 ? '' : 'locked'; }, 'Scanning 2 of 5'],
+      [520,  function (i) { return i < 3 ? (i < 2 ? 'done' : 'scan') : i < 5 ? '' : 'locked'; }, 'Scanning 3 of 5'],
+      [520,  function (i) { return i < 4 ? (i < 3 ? 'done' : 'scan') : i < 5 ? '' : 'locked'; }, 'Scanning 4 of 5'],
+      [520,  function (i) { return i < 5 ? (i < 4 ? 'done' : 'scan') : 'locked'; }, 'Scanning 5 of 5'],
+      [2600, function (i) { return i < 5 ? 'done' : 'locked'; }, '<b>5 scanned.</b> 19 pages out of scope on this plan.']
+    ];
+    loopDemo({
+      el: el, ctl: document.querySelector('[data-ctl="free"]'), steps: steps,
+      paint: function (s) { setAll(cells, s[1]); note.innerHTML = s[2]; }
+    });
+  })();
+
+  // ---- Pro: the whole site, then a second run compared against the first.
+  (function () {
+    var el = document.getElementById('cap-pro');
+    var note = document.getElementById('note-pro');
+    if (!el) return;
+    var cells = grid(el);
+    var bars = [].slice.call(document.querySelectorAll('#strip-pro .bar'));
+    var upto = function (n, tail) { return function (i) { return i < n ? 'done' : i === n ? 'scan' : (tail || ''); }; };
+    var steps = [
+      [600,  upto(0),  [0, 0], 'Crawl starts at the homepage'],
+      [500,  upto(6),  [0, 0], 'Scanning 6 of 24'],
+      [500,  upto(13), [0, 0], 'Scanning 13 of 24'],
+      [500,  upto(20), [0, 0], 'Scanning 20 of 24'],
+      [1100, function () { return 'done'; }, [1, 0], '<b>24 scanned.</b> Whole site, one run'],
+      [1600, function () { return 'done'; }, [1, 0], 'Re-scan scheduled for next week'],
+      [2600, function () { return 'done'; }, [1, 1], '<b>Diff:</b> 12 resolved, 2 new since the last run']
+    ];
+    loopDemo({
+      el: el, ctl: document.querySelector('[data-ctl="pro"]'), steps: steps,
+      paint: function (s) {
+        setAll(cells, s[1]);
+        bars.forEach(function (b, n) { b.dataset.fill = String(s[2][n]); });
+        note.innerHTML = s[3];
+      }
+    });
+  })();
+
+  // ---- Team: the login opens first, then the pages behind it exist at all.
+  (function () {
+    var el = document.getElementById('cap-team');
+    var note = document.getElementById('note-team');
+    var gate = document.getElementById('gate-team');
+    if (!el) return;
+    var cells = grid(el);
+    // The back half of the grid is what lives behind the login.
+    var behind = function (i) { return i >= 12; };
+    var steps = [
+      [1300, 0, function (i) { return behind(i) ? 'locked' : ''; }, 'Half this site is behind a login'],
+      [1200, 1, function (i) { return behind(i) ? 'locked' : ''; }, 'Session established, encrypted at rest'],
+      [700,  1, function (i) { return i < 12 ? 'done' : 'locked'; }, 'Public pages scanned'],
+      [700,  1, function (i) { return i < 18 ? 'done' : 'scan'; }, 'Scanning behind the login'],
+      [2800, 1, function () { return 'done'; }, '<b>24 scanned.</b> Including the 12 nobody else can reach']
+    ];
+    loopDemo({
+      el: el, ctl: document.querySelector('[data-ctl="team"]'), steps: steps,
+      paint: function (s) {
+        gate.dataset.open = String(s[1]);
+        gate.textContent = s[1] ? 'Signed in' : 'Login required';
+        setAll(cells, s[2]);
+        note.innerHTML = s[3];
+      }
+    });
+  })();
+})();
+
+// Interest in a plan that does not exist yet. There is nothing to sign up for,
+// so this records a click and says so — no email field for a product with no
+// launch date, and nothing stored that identifies anyone.
+(function () {
+  document.querySelectorAll('[data-interest]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var key = btn.dataset.interest;
+      var note = document.querySelector('[data-note-for="' + key + '"]');
+      navigator.sendBeacon && navigator.sendBeacon('/api/event', JSON.stringify({ button: key, page: 'plans' }));
+      btn.textContent = 'Noted — thank you';
+      btn.disabled = true;
+      if (note) note.textContent = 'Counted. The more of these a plan gets, the sooner it gets built.';
+    });
+  });
+})();
+</script>
+</body>
+</html>

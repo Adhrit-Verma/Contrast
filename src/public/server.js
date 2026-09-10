@@ -25,7 +25,11 @@ import { classifyDevice } from './device.js';
 import { cleanupOldRuns } from './cleanup.js';
 import { loadActiveRules, matchesRule } from './rules.js';
 
-const CLICK_BUTTONS = new Set(['landing-cta', 'scan-complete-card', 'report-footer']);
+// 'plans-pro'/'plans-team' are interest clicks on subscription tiers that do
+// not exist yet. Nothing is sold and no address is collected — the count is
+// the whole signal, and it is the only thing that tells us which plan to
+// build first.
+const CLICK_BUTTONS = new Set(['landing-cta', 'scan-complete-card', 'report-footer', 'plans-pro', 'plans-team']);
 const RUN_RETENTION_DAYS = Number(process.env.PUBLIC_RUN_RETENTION_DAYS ?? 15);
 
 // Only this service — the free public funnel — ever shows a support ask.
@@ -279,6 +283,19 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
       }
       if (url.pathname === '/scan' && req.method === 'GET') {
         return send(200, readFileSync(join(PUBLIC_DIR, 'scan.html'))); // the paste-a-URL tool
+      }
+      if (url.pathname === '/plans' && req.method === 'GET') {
+        return send(200, readFileSync(join(PUBLIC_DIR, 'plans.html')));
+      }
+      // The design system, shared by / and /plans. Two marketing pages is the
+      // point at which inlining a copy each stops being cheap and starts
+      // guaranteeing drift. Named explicitly rather than serving PUBLIC_DIR as
+      // a static root: this process also renders URLs strangers supply, and a
+      // directory route is a path-traversal surface that a two-line allowlist
+      // simply does not have.
+      if ((url.pathname === '/site.css' || url.pathname === '/site.js') && req.method === 'GET') {
+        const type = url.pathname.endsWith('.css') ? 'text/css' : 'text/javascript';
+        return send(200, readFileSync(join(PUBLIC_DIR, url.pathname.slice(1))), type);
       }
       if (url.pathname === '/api/visits' && req.method === 'GET') {
         return json(200, { count: visitCount() });

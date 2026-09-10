@@ -14,6 +14,7 @@ const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const SEV_ORDER = { critical: 0, serious: 1, moderate: 2, minor: 3 };
+const SEVERITIES = ['critical', 'serious', 'moderate', 'minor'];
 const understanding = (c) => (c ? `https://www.w3.org/WAI/WCAG22/Understanding/${c}` : null);
 
 // ------------------------------------------------------------- coverage
@@ -167,8 +168,26 @@ code { font-family:var(--font-mono); font-size:.9em; overflow-wrap:anywhere }
    starts the instant you land on it, not three scrolls in. */
 .hero { background:var(--text); color:var(--canvas); padding:56px 40px 64px }
 .hero-inner { max-width:1440px; margin:0 auto }
-.hero .brand { display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-size:17px; margin-bottom:36px; opacity:.85 }
-.hero .brand .mark { width:24px; height:24px; border-radius:7px; background:var(--accent); display:grid; place-items:center; flex:none }
+/* Brand left, actions right — the two things a reader does with a report they
+   were sent are share it onward and keep a copy, so both sit above the fold
+   rather than buried at the end. */
+.brand-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:36px }
+.brand-row .by { font-size:13px; color:#8d8a83; letter-spacing:.02em }
+.hero-actions { margin-left:auto; display:flex; gap:10px; flex-wrap:wrap }
+.act {
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:13.5px; font-weight:600;
+  color:var(--canvas); background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+  border-radius:4px; padding:9px 15px; cursor:pointer; text-decoration:none;
+  transition:background .15s var(--ease), border-color .15s var(--ease), transform .15s var(--ease);
+}
+.act:hover { background:var(--canvas); border-color:var(--canvas); color:var(--text) }
+.act:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+.act-primary { background:var(--accent); border-color:var(--accent); color:#141413 }
+.act-primary:hover { background:#dd8a6d; border-color:#dd8a6d }
+.act svg { flex:none }
+.share-note { font-size:13px; color:#7fcf9d; margin:0 0 22px }
+.hero .brand { display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-size:17px; opacity:.9 }
+.hero .brand .mark { width:24px; height:24px; border-radius:4px; background:var(--accent); display:grid; place-items:center; flex:none }
 .hero .brand .mark { --c:56.55; color:var(--canvas); padding:4px }
 .hero .brand .mark svg { width:100%; height:100%; display:block; transform:rotate(47deg) }
 .hero .brand .mark circle { fill:none; stroke-width:3.5; stroke-linecap:round }
@@ -181,9 +200,11 @@ code { font-family:var(--font-mono); font-size:.9em; overflow-wrap:anywhere }
 @media (prefers-reduced-motion:reduce) { .hero .brand .mark[data-state="running"] svg, .hero .brand .mark[data-state="running"] .arc { animation:none } .hero .brand .mark[data-state="running"] .arc { stroke-dashoffset:calc(var(--c)*.5) } }
 .eyebrow { font-family:var(--font-mono); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#e0a794; margin:0 0 10px }
 .hero h1 { font-family:var(--font-display); font-weight:400; font-size:clamp(32px,5vw,54px); line-height:1.1; margin:0 0 10px; letter-spacing:-.01em }
-.hero .seed { font-family:var(--font-mono); font-size:15px; color:#d6d3cc; margin:0 0 6px; word-break:break-all }
+.hero .seed { font-family:var(--font-mono); font-size:15px; margin:0 0 6px; word-break:break-all }
+.hero .seed a { color:#e0a794; text-decoration:none; border-bottom:1px solid rgba(224,167,148,.4) }
+.hero .seed a:hover { border-bottom-color:#e0a794 }
 .hero .meta-line { font-size:13px; color:#a09d96; margin:0 0 40px }
-.hero-abandoned { background:rgba(255,107,92,.12); border:1px solid rgba(255,107,92,.35); border-radius:10px; padding:14px 18px; margin:0 0 32px; font-size:14px; color:#ffd4cc }
+.hero-abandoned { background:rgba(255,107,92,.12); border:1px solid rgba(255,107,92,.35); border-radius:4px; padding:14px 18px; margin:0 0 32px; font-size:14px; color:#ffd4cc }
 .hero-abandoned b { color:#fff }
 .hero-grid { display:grid; grid-template-columns:auto minmax(0,1fr); gap:64px; align-items:center }
 @media (max-width:900px) { .hero-grid { grid-template-columns:1fr; gap:32px } }
@@ -218,12 +239,12 @@ h2 { font-family:var(--font-display); font-weight:400; font-size:clamp(24px,2.6v
 /* -------------------------------------------------------- measured/assessed
    The distinction gets shown, not just claimed — same pattern as the public
    landing page's own demo strip, so the story is visually consistent site-wide. */
-.demo { background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,20,19,.05); max-width:900px }
+.demo { background:var(--surface); border:1px solid var(--line); border-radius:4px; overflow:hidden; max-width:900px }
 .demo-row { display:flex; gap:12px; align-items:flex-start; padding:16px 18px }
 .demo-row + .demo-row { border-top:1px solid var(--line) }
 .demo-row.det { border-left:3px solid var(--text-2) }
 .demo-row.ai { border-left:4px dotted var(--accent) }
-.dtag { flex:none; font-family:var(--font-mono); font-size:11px; font-weight:700; padding:4px 9px; border-radius:6px; letter-spacing:.02em }
+.dtag { flex:none; font-family:var(--font-mono); font-size:11px; font-weight:700; padding:4px 9px; border-radius:4px; letter-spacing:.02em }
 .dtag.det { background:var(--surface-2); color:var(--text-2) }
 .dtag.ai { background:var(--accent-soft); color:var(--accent-text) }
 .demo-row p { margin:0; font-size:14px; color:var(--text-2) }
@@ -236,7 +257,7 @@ h2 { font-family:var(--font-display); font-weight:400; font-size:clamp(24px,2.6v
 .coverage-key .dot { width:9px; height:9px; border-radius:50% }
 
 /* ----------------------------------------------------------- data table */
-.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--surface) }
+.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:var(--surface) }
 table { border-collapse:collapse; width:100%; font-size:14px }
 /* Wrap rather than force a scroll container: these cells are criterion names
    and reasons, not code — breaking them is kinder than a hidden sideways
@@ -248,15 +269,61 @@ details.coverage-detail { margin-top:8px }
 details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:600; color:var(--accent-text); padding:6px 0 }
 
 /* -------------------------------------------------------------- findings
-   Grouped by page, then component, via native <details> — an accordion that
-   still works if CSS fails to load, and doesn't choke on a 990-finding run. */
-.page-group { margin-bottom:16px }
-.page-group > summary { cursor:pointer; font-family:var(--font-mono); font-size:14px; padding:14px 18px; background:var(--surface); border:1px solid var(--line); border-radius:12px; font-weight:600; display:flex; gap:10px; align-items:center; flex-wrap:wrap; overflow-wrap:anywhere }
-.page-group > summary .count { margin-left:auto; font-weight:400; color:var(--text-3); white-space:nowrap }
-.page-group[open] > summary { border-radius:12px 12px 0 0 }
-.page-group-body { border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 18px 18px }
-.component { margin-top:14px }
-.component > summary { cursor:pointer; font-size:13.5px; font-weight:600; color:var(--text-2); padding:8px 0; overflow-wrap:anywhere }
+   One card per distinct ISSUE, laid out across the width instead of down it.
+   A 990-finding run is about twenty problems repeated across a template; the
+   old page > component > finding accordion made the reader scroll a kilometre
+   to learn that. Cards stay <details> so the report still works with CSS off.
+
+   Masonry via CSS columns rather than grid: an open card grows tall, and a
+   grid row would leave a gap the height of the tallest card beside it. */
+.filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 18px }
+.chip { font:600 13px/1 var(--font-ui); display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border-radius:999px; border:1px solid var(--line-strong); background:var(--surface); color:var(--text-2); cursor:pointer; transition:background .15s, color .15s, border-color .15s; text-transform:capitalize }
+.chip:hover { border-color:var(--text-3); color:var(--text) }
+.chip:focus-visible { outline:2px solid var(--accent-text); outline-offset:2px }
+.chip.on { background:var(--text); border-color:var(--text); color:var(--canvas) }
+.chip-n { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--surface-2); color:var(--text-2) }
+.chip.on .chip-n { background:rgba(255,255,255,.18); color:var(--canvas) }
+.chip-ghost { margin-left:auto; background:transparent; border-style:dashed }
+.filters-sep { width:1px; align-self:stretch; background:var(--line); margin:0 4px }
+
+.issue-grid { columns:2 400px; column-gap:18px }
+.issue { break-inside:avoid; display:inline-block; width:100%; margin:0 0 18px; background:var(--surface); border:1px solid var(--line); border-radius:4px; overflow:hidden }
+.issue[hidden] { display:none }
+.issue > summary { cursor:pointer; list-style:none; position:relative; padding:16px 18px 15px 22px; display:grid; gap:9px }
+.issue > summary::-webkit-details-marker { display:none }
+.issue > summary:focus-visible { outline:2px solid var(--accent-text); outline-offset:-3px; border-radius:4px }
+.issue > summary:hover { background:var(--surface-2) }
+/* The severity stripe: colour carries the same information the badge does in
+   words, so it is never the only signal. */
+.issue-bar { position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--text-3) }
+.issue[data-sev=critical] .issue-bar { background:var(--sev-critical-fg) }
+.issue[data-sev=serious] .issue-bar { background:var(--sev-serious-fg) }
+.issue[data-sev=moderate] .issue-bar { background:var(--sev-moderate-fg) }
+.issue[data-sev=minor] .issue-bar { background:var(--sev-minor-fg) }
+.issue[data-src=ai] .issue-bar { background:repeating-linear-gradient(180deg,var(--accent) 0 6px,transparent 6px 11px) }
+.issue-top { display:flex; flex-wrap:wrap; gap:6px; align-items:center }
+.issue-title { font-family:var(--font-display); font-size:19px; line-height:1.28; font-weight:400; color:var(--text); overflow-wrap:anywhere }
+.issue-foot { display:flex; flex-wrap:wrap; gap:10px; align-items:baseline; font-size:12.5px; color:var(--text-2) }
+.issue-count { font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--text) }
+.issue-rule { font-family:var(--font-mono); font-size:11.5px; color:var(--text-3); margin-left:auto }
+.issue-body { padding:2px 18px 16px 22px; border-top:1px solid var(--line) }
+.issue-body .finding { border-radius:0 8px 8px 0; padding:13px 15px; margin:12px 0 0 }
+/* A forty-line markup dump is not read, it is scrolled past. Clamp it and let
+   anyone who wants the whole thing scroll inside the box. */
+.issue-body pre { max-height:170px; overflow:auto; margin:8px 0 0 }
+.issue-body .shot { max-height:200px; width:auto }
+/* One column below the two-column threshold, and no reason to make a phone
+   render a masonry it cannot use. */
+@media (max-width:700px) {
+  .issue-grid { columns:1 }
+  .chip-ghost { margin-left:0 }
+  /* One column means every collapsed card costs a full row of scroll, so the
+     card gets tighter here rather than the list getting shorter. */
+  .issue { margin-bottom:12px }
+  .issue > summary { padding:13px 15px 12px 19px; gap:7px }
+  .issue-title { font-size:17px }
+  .issue-rule { margin-left:auto }
+}
 
 .finding { border-left:3px solid var(--text-3); background:var(--surface); border-radius:0 10px 10px 0; padding:16px 18px; margin:10px 0 }
 .finding.ai { border-left-style:dotted; border-left-width:4px; border-left-color:var(--accent) }
@@ -266,7 +333,12 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
 .finding.sev-minor { border-left-color:var(--sev-minor-fg) }
 .finding.ai.sev-critical { border-left-color:var(--accent) } /* dotted style already signals AI; keep the accent hue */
 .finding-head { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px }
-.badge { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.02em; text-transform:uppercase }
+/* Which page this instance is on. It is the one fact the issue card header
+   cannot state, so it leads the instance instead of the rule id. */
+.where { font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--accent-text); text-decoration:none; border-bottom:1px solid var(--accent-soft); overflow-wrap:anywhere }
+.where:hover { border-bottom-color:var(--accent-text) }
+.where:focus-visible { outline:2px solid var(--accent-text); outline-offset:2px }
+.badge { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px; letter-spacing:.02em; text-transform:uppercase }
 .badge.det { background:var(--surface-2); color:var(--text-2) }
 .badge.soon { background:var(--accent-soft); color:var(--accent-text); vertical-align:middle; margin-left:10px }
 
@@ -278,7 +350,7 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
 /* No opacity on the card: dimming the container dragged this text to 3.24:1,
    under the 4.5:1 floor — our own axe run caught it. The dashed border and the
    placeholder lines carry the "inert" reading without touching legibility. */
-.ghost { border:1px dashed var(--line-strong); border-radius:12px; padding:16px; background:var(--surface) }
+.ghost { border:1px dashed var(--line-strong); border-radius:4px; padding:16px; background:var(--surface) }
 .ghost-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px }
 .ghost-head b { font-size:15px }
 .ghost .lock { font-size:13px; color:var(--text-3) }
@@ -291,6 +363,40 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
 /* ------------------------------------------------------------ colophon */
 .colophon { border-top:1px solid var(--line); margin-top:56px; padding:28px 0 8px; color:var(--text-3); font-size:13px }
 .colophon b { color:var(--text-2) }
+
+/* ------------------------------------------------------------- printing
+   "Save as PDF" is how this report reaches a client's inbox, so the printed
+   form is a real deliverable, not a fallback. Ink-cheap, page-break aware,
+   and it prints the destination of every link since a PDF cannot be clicked
+   through in the same way. */
+@media print {
+  @page { margin:14mm 12mm }
+  html { scroll-behavior:auto }
+  body { background:#fff; font-size:11pt }
+  .hero { background:#fff; color:var(--text); padding:0 0 18pt; border-bottom:2pt solid var(--text) }
+  .hero .brand, .hero h1, .hero-stat b { color:var(--text) }
+  .hero .brand .mark { background:var(--accent) }
+  .hero .seed a { color:var(--accent-text); border:0 }
+  .hero .meta-line, .hero-stat span, .brand-row .by { color:var(--text-3) }
+  .hero-stats { border-left:1pt solid var(--line) }
+  .hero-actions, .story-nav, .share-note, .filters, #support, #deeper { display:none !important }
+  /* Print is one long column by definition; a masonry there fragments cards
+     across page breaks for no gain. */
+  .issue-grid { columns:1 }
+  .issue { break-inside:avoid; page-break-inside:avoid; margin-bottom:10pt }
+  .issue[hidden] { display:block !important } /* a filtered view must still print whole */
+  main { padding:0 }
+  section { break-inside:avoid; page-break-inside:avoid }
+  .finding, .ghost, .fix-box { break-inside:avoid; page-break-inside:avoid }
+  h2, h3 { break-after:avoid; page-break-after:avoid }
+  details { display:block }
+  details > summary { list-style:none }
+  pre { white-space:pre-wrap; border:1pt solid var(--line) }
+  .shot { max-height:70mm; object-fit:contain }
+  /* A printed link is a dead end unless it says where it goes. */
+  .desc a[href^="http"]::after, .coverage-table a[href^="http"]::after { content:" (" attr(href) ")"; font-size:8pt; color:var(--text-3) }
+  .colophon { border-top:1pt solid var(--text-3) }
+}
 .badge.ai { background:var(--accent-soft); color:var(--accent-text) }
 .badge.sev-critical { background:var(--sev-critical-bg); color:var(--sev-critical-fg) }
 .badge.sev-serious { background:var(--sev-serious-bg); color:var(--sev-serious-fg) }
@@ -302,20 +408,20 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
 .finding-meta { font-size:12.5px; color:var(--text-3) }
 .finding p.desc { margin:0 0 8px; color:var(--text-2); font-size:14.5px }
 .finding .sel { font-size:12.5px; color:var(--text-3); margin:0 0 8px }
-pre { background:#141413; color:#f5f0e8; padding:12px 14px; border-radius:8px; overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; margin:8px 0 }
+pre { background:#141413; color:#f5f0e8; padding:12px 14px; border-radius:4px; overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; margin:8px 0 }
 pre.after { background:#132518 }
-img.shot { max-width:100%; border:1px solid var(--line); border-radius:8px; margin-top:8px }
+img.shot { max-width:100%; border:1px solid var(--line); border-radius:4px; margin-top:8px }
 .fix-box { margin-top:10px; padding-top:10px; border-top:1px dashed var(--line) }
 .fix-box h4 { margin:0 0 6px; font-size:13.5px; display:flex; gap:8px; align-items:center }
 
 /* ----------------------------------------------------------- support ask
    Only ever rendered on the free public funnel's reports (see writeHtml's
    supportUrl option) — never on one an auditor forwards to a paying client. */
-.support { margin-top:8px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px 28px; display:flex; gap:20px; align-items:center; flex-wrap:wrap }
+.support { margin-top:8px; background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:24px 28px; display:flex; gap:20px; align-items:center; flex-wrap:wrap }
 .support-copy { flex:1; min-width:260px }
 .support-copy b { display:block; font-family:var(--font-display); font-weight:400; font-size:20px; margin-bottom:4px }
 .support-copy p { margin:0; color:var(--text-2); font-size:14px; max-width:520px }
-.support a.give { flex:none; display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:15px; background:var(--accent); color:var(--on-accent, #141413); text-decoration:none; border-radius:10px; padding:13px 22px }
+.support a.give { flex:none; display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:15px; background:var(--accent); color:var(--on-accent, #141413); text-decoration:none; border-radius:4px; padding:13px 22px }
 .support a.give:hover { background:var(--accent-text); color:#fff }
 
 /* ------------------------------------------------------ diff page basics
@@ -336,20 +442,32 @@ main > h1 { font-family:var(--font-display); font-weight:400; font-size:clamp(28
 const sourceClass = (f) => (f.source === 'ai' ? 'ai' : 'det');
 const sevClass = (f) => `sev-${f.severity ?? 'minor'}`;
 
-function findingHtml(f, reportDir) {
+/**
+ * One instance inside an issue card. The card header already states the rule,
+ * the severity and MEASURED/ASSESSED, so repeating all three on every instance
+ * is noise; what an instance uniquely answers is *where* - which page, which
+ * element - and that was previously carried by the page accordion this
+ * grouping replaced.
+ */
+function findingHtml(f, reportDir, groupTitle = null) {
   const shot = f.screenshotPath ? relative(reportDir, f.screenshotPath).replace(/\\/g, '/') : null;
+  let where = f.pageUrl ?? '';
+  try { const u = new URL(f.pageUrl); where = (u.pathname + u.search) || '/'; } catch {}
   const fix = f.fix;
   return `<div class="finding ${sourceClass(f)} ${sevClass(f)}">
   <div class="finding-head">
-    <span class="badge ${sourceClass(f)}">${f.source === 'ai' ? 'ASSESSED' : 'MEASURED'}</span>
-    <span class="badge ${sevClass(f)}">${esc(f.severity)}</span>
+    ${f.pageUrl ? `<a class="where" href="${esc(f.pageUrl)}">${esc(where)}</a>` : ''}
     ${f.wcagCriterion ? `<a class="badge wcag" href="${understanding(f.wcagCriterion)}">WCAG ${esc(f.wcagCriterion)} ${esc(f.wcagLevel ?? '')}</a>` : ''}
-    <span class="finding-meta">${esc(f.ruleId)} · confidence ${f.confidence}${f.sources?.length > 1 ? ` · also ${esc(f.sources.join(', '))}` : ''}</span>
+    <span class="finding-meta">confidence ${f.confidence}${f.sources?.length > 1 ? ` · also ${esc(f.sources.join(', '))}` : ''}</span>
   </div>
-  <p class="desc">${esc(f.description)}</p>
+  ${f.description && f.description !== groupTitle ? `<p class="desc">${esc(f.description)}</p>` : ''}
   ${f.domSelector ? `<div class="sel">selector: <code>${esc(f.domSelector)}</code></div>` : ''}
   ${f.computedStyles ? `<div class="sel">computed: <code>${esc(JSON.stringify(f.computedStyles))}</code></div>` : ''}
-  ${f.htmlSnippet ? `<pre>${esc(f.htmlSnippet)}</pre>` : ''}
+  <!-- tabindex, but no role: the snippet scrolls, so it must be keyboard
+       reachable, and a report has dozens of them — giving each the same
+       role="region" and label made dozens of identically-named landmarks,
+       which is its own violation. Focusability is the whole requirement. -->
+  ${f.htmlSnippet ? `<pre tabindex="0">${esc(f.htmlSnippet)}</pre>` : ''}
   ${shot ? `<img class="shot" src="${esc(shot)}" alt="Screenshot of the flagged element">` : ''}
   ${fix ? fixHtml(fix) : ''}
 </div>`;
@@ -499,58 +617,127 @@ function comingSoonHtml(show) {
   </section>`;
 }
 
+/**
+ * The report is about the site that was scanned, not about which of our
+ * services ran it. `clientId` is an internal handle — on a free scan it is
+ * literally "contrast-public", which told the reader nothing and looked like
+ * the report was about us.
+ */
+export function siteNameOf(run) {
+  try {
+    return new URL(run.seedUrl).hostname.replace(/^www\./, '');
+  } catch {
+    return run.seedUrl || run.clientId || 'this site';
+  }
+}
+
 export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, funding = null, comingSoon = false } = {}) {
   const report = buildReport(db, runId, catalogue);
   const reportDir = dirname(path);
   const s = report.summary;
+  const siteName = siteNameOf(report.run);
 
-  const byPage = new Map();
+  // Grouped by ISSUE, not by page. A 990-finding run is usually about twenty
+  // distinct problems repeated across a template — "the same broken ARIA
+  // pattern, 55 times" is what a reader can act on, where 990 stacked cards
+  // is what makes them close the tab. Pages become an attribute of the issue
+  // rather than the top level of a nested accordion.
+  const issues = new Map();
   for (const f of report.findings) {
-    if (!byPage.has(f.pageUrl)) byPage.set(f.pageUrl, new Map());
-    const comp = (f.domSelector ?? '').split(' > ').slice(0, 2).join(' > ') || 'page-level';
-    const groups = byPage.get(f.pageUrl);
-    if (!groups.has(comp)) groups.set(comp, []);
-    groups.get(comp).push(f);
-  }
-
-  // A collapsed accordion inside a collapsed accordion hides the entire point
-  // of the report. Open everything on a small run; on a 900-finding one, open
-  // the first page and the worst components so the reader lands on real
-  // content, not a wall of disclosure triangles.
-  const totalFindings = report.findings.length;
-  const openAll = totalFindings <= 60;
-
-  const pagesHtml = [...byPage.entries()]
-    .map(([url, groups], pageIdx) => {
-      const total = [...groups.values()].flat().length;
-      const sorted = [...groups.entries()].map(([comp, list]) => {
-        list.sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
-        return [comp, list];
+    const key = `${f.ruleId ?? 'other'}|${f.severity}|${f.source === 'ai' ? 'ai' : 'det'}`;
+    if (!issues.has(key)) {
+      issues.set(key, {
+        ruleId: f.ruleId ?? 'other', severity: f.severity ?? 'minor',
+        source: f.source === 'ai' ? 'ai' : 'det',
+        criterion: f.wcagCriterion, level: f.wcagLevel,
+        title: f.description ?? f.ruleId ?? 'Finding',
+        items: [], pages: new Set(),
       });
-      // worst-first, so "the first few open" means the ones that matter
-      sorted.sort((a, b) => (SEV_ORDER[a[1][0].severity] ?? 9) - (SEV_ORDER[b[1][0].severity] ?? 9));
-      const inner = sorted
-        .map(([comp, list], compIdx) => {
-          const open = openAll || (pageIdx === 0 && compIdx < 5);
-          const worst = list[0].severity ?? 'minor';
-          return `<details class="component" ${open ? 'open' : ''}><summary><span class="badge sev-${esc(worst)}">${esc(worst)}</span> ${esc(comp)} — ${list.length}</summary>${list.map((f) => findingHtml(f, reportDir)).join('')}</details>`;
-        })
-        .join('');
-      return `<details class="page-group" ${openAll || pageIdx < 3 ? 'open' : ''}><summary>${esc(url)} <span class="count">${total} finding${total === 1 ? '' : 's'}</span></summary><div class="page-group-body">${inner}</div></details>`;
+    }
+    const g = issues.get(key);
+    g.items.push(f);
+    g.pages.add(f.pageUrl);
+  }
+  const issueList = [...issues.values()].sort(
+    (a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9) || b.items.length - a.items.length
+  );
+
+  // Three examples, not twelve. An issue repeated 55 times is understood from
+  // three instances plus the count; rendering a dozen snippets per card was
+  // what made one open card 3,500px tall — the exact wall of text this
+  // grouping exists to remove. The rest are in the JSON.
+  const SHOWN = 3;
+  const issuesHtml = issueList
+    .map((g, i) => {
+      const shown = g.items.slice(0, SHOWN);
+      const rest = g.items.length - shown.length;
+      return `<details class="issue" data-sev="${esc(g.severity)}" data-src="${g.source}" ${i === 0 ? 'open' : ''}>
+    <summary>
+      <span class="issue-bar" aria-hidden="true"></span>
+      <span class="issue-top">
+        <span class="badge sev-${esc(g.severity)}">${esc(g.severity)}</span>
+        <span class="badge ${g.source === 'ai' ? 'ai' : 'det'}">${g.source === 'ai' ? 'ASSESSED' : 'MEASURED'}</span>
+        ${g.criterion ? `<span class="badge wcag">WCAG ${esc(g.criterion)}${g.level ? ' ' + esc(g.level) : ''}</span>` : ''}
+      </span>
+      <b class="issue-title">${esc(g.title)}</b>
+      <span class="issue-foot">
+        <span class="issue-count">${g.items.length}×</span>
+        <span>on ${g.pages.size} page${g.pages.size === 1 ? '' : 's'}</span>
+        <span class="issue-rule">${esc(g.ruleId)}</span>
+      </span>
+    </summary>
+    <div class="issue-body">
+      ${shown.map((f) => findingHtml(f, reportDir, g.title)).join('')}
+      ${rest > 0 ? `<p class="finding-meta">…and ${rest} more instance${rest === 1 ? '' : 's'} of the same issue. The full list is in the JSON download.</p>` : ''}
+    </div>
+  </details>`;
     })
     .join('');
 
+  const sevCounts = SEVERITIES.map((sev) => [sev, issueList.filter((g) => g.severity === sev).length]).filter(([, n]) => n);
+  const filterBar = `<div class="filters" role="group" aria-label="Filter issues">
+    <button type="button" class="chip on" data-filter="all">All <span class="chip-n">${issueList.length}</span></button>
+    ${sevCounts.map(([sev, n]) => `<button type="button" class="chip" data-filter="${sev}">${sev} <span class="chip-n">${n}</span></button>`).join('')}
+    <span class="filters-sep" aria-hidden="true"></span>
+    <button type="button" class="chip" data-filter="det">Measured <span class="chip-n">${issueList.filter((g) => g.source === 'det').length}</span></button>
+    <button type="button" class="chip" data-filter="ai">Assessed <span class="chip-n">${issueList.filter((g) => g.source === 'ai').length}</span></button>
+    <button type="button" class="chip chip-ghost" id="expand-all">Expand all</button>
+  </div>`;
+
+  const pagesHtml = issueList.length ? filterBar + `<div class="issue-grid">${issuesHtml}</div>` : '';
+
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Accessibility audit — ${esc(report.run.clientId)} — ${esc(runId)}</title><style>${CSS}</style></head>
+<title>Accessibility audit — ${esc(siteName)}</title><style>${CSS}</style></head>
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div class="brand"><span class="mark" data-state="idle"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>Contrast</div>
+    <div class="brand-row">
+      <div class="brand"><span class="mark" data-state="idle"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>Contrast</div>
+      <!-- Same gate as the colophon at the foot of the page: an auditor hands
+           this report to their own client, and it is not ours to co-brand.
+           Only the free public funnel's own reports carry the org mark. -->
+      ${comingSoon || supportUrl ? '<span class="by">by Vimoksh</span>' : ''}
+      <div class="hero-actions">
+        <button type="button" class="act act-primary" id="share-btn">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/></svg>
+          Share report
+        </button>
+        <button type="button" class="act" id="print-btn">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4v-7h16v7h-2"/><path d="M8 15h8v6H8z"/></svg>
+          Save as PDF
+        </button>
+        <a class="act" href="report.json" download="accessibility-report.json">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 21h16"/></svg>
+          Data (JSON)
+        </a>
+      </div>
+    </div>
     <span class="eyebrow">Accessibility Audit Report</span>
-    <h1>${esc(report.run.clientId)}</h1>
-    <p class="seed">${esc(report.run.seedUrl)}</p>
-    <p class="meta-line">run <code style="color:#d6d3cc">${esc(runId)}</code> · generated ${esc(new Date(report.generatedAt).toLocaleString())}</p>
+    <h1>${esc(siteName)}</h1>
+    <p class="seed"><a href="${esc(report.run.seedUrl)}" target="_blank" rel="noopener">${esc(report.run.seedUrl)}</a></p>
+    <p class="meta-line">generated ${esc(new Date(report.generatedAt).toLocaleString())} · <code style="color:#8d8a83">${esc(runId)}</code></p>
+    <p class="share-note" id="share-note" role="status" hidden></p>
     ${report.run.notes ? `<div class="hero-abandoned"><b>This run did not complete as expected.</b> ${esc(report.run.notes)}</div>` : ''}
     <div class="hero-grid">
       ${severityRing(s.bySeverity)}
@@ -586,9 +773,9 @@ export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, 
 
 <section id="findings">
   <div class="section-head">
-    <span class="eyebrow">Sorted worst first, grouped by page</span>
+    <span class="eyebrow">Grouped by issue, worst first</span>
     <h2>Findings</h2>
-    <p>Every finding below carries its own certainty badge and, where one exists, a WCAG citation you can hand straight to a developer.</p>
+    <p>One card per distinct problem, not per occurrence &mdash; the same broken pattern repeated across a template is one thing to fix, not fifty. Open a card for examples, the exact selector, and a WCAG citation you can hand straight to a developer.</p>
   </div>
   ${pagesHtml || '<p style="color:var(--text-2)">No findings recorded.</p>'}
 </section>
@@ -603,6 +790,74 @@ ${comingSoon || supportUrl ? `<p class="colophon"><b>Contrast</b> — an accessi
   Built to say what it checked, and what it could not.</p>` : ''}
 </main>
 <script>
+// Sharing a report is the single most common thing a reader wants to do with
+// one, and "copy the address bar" is not a feature. Native share sheet where
+// the device has one (every phone), clipboard everywhere else.
+(function(){
+  var note = document.getElementById('share-note');
+  var say = function(msg){ if(!note) return; note.textContent = msg; note.hidden = false;
+    clearTimeout(say.t); say.t = setTimeout(function(){ note.hidden = true; }, 4000); };
+
+  var share = document.getElementById('share-btn');
+  if (share) share.addEventListener('click', async function(){
+    var url = location.href;
+    var data = { title: document.title, text: 'Accessibility audit for ${esc(siteName)}', url: url };
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(data))) {
+        await navigator.share(data);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      say('Link copied — paste it anywhere to share this report.');
+    } catch (err) {
+      // AbortError just means the user closed the share sheet; not a failure.
+      if (err && err.name === 'AbortError') return;
+      // Last resort for browsers with no clipboard API on an insecure origin.
+      window.prompt('Copy this link to share the report:', url);
+    }
+  });
+
+  var print = document.getElementById('print-btn');
+  if (print) print.addEventListener('click', function(){
+    // Everything is expanded first, or the PDF silently loses every finding
+    // hidden inside a collapsed <details>.
+    document.querySelectorAll('details').forEach(function(d){ d.open = true; });
+    window.print();
+  });
+})();
+
+// Filtering the issue cards. Everything is already in the DOM, so this is a
+// hidden attribute and nothing else — no re-render, no state to keep in sync.
+(function(){
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.issue'));
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.chip[data-filter]'));
+  if (!cards.length) return;
+
+  chips.forEach(function(chip){
+    chip.setAttribute('aria-pressed', chip.classList.contains('on') ? 'true' : 'false');
+    chip.addEventListener('click', function(){
+      var f = chip.dataset.filter;
+      chips.forEach(function(c){
+        var on = c === chip;
+        c.classList.toggle('on', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      cards.forEach(function(card){
+        card.hidden = !(f === 'all' || card.dataset.sev === f || card.dataset.src === f);
+      });
+    });
+  });
+
+  var expand = document.getElementById('expand-all');
+  if (expand) expand.addEventListener('click', function(){
+    // One button, both directions — a separate "collapse all" is a second
+    // control for a state the label can just carry.
+    var opening = expand.textContent.trim() === 'Expand all';
+    cards.forEach(function(c){ if (!c.hidden) c.open = opening; });
+    expand.textContent = opening ? 'Collapse all' : 'Expand all';
+  });
+})();
+
 (function(){
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.querySelectorAll('.hero-stat b[data-to]').forEach(function(el){

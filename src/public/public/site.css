@@ -1,0 +1,366 @@
+/* ==========================================================================
+   Contrast — public site design system
+   Shared by / (landing) and /plans. Same brand tokens as the admin
+   dashboard's tokens.css.
+
+   Historically each public page inlined its own copy of these values. Two
+   marketing pages sharing one system is the point at which that stops being
+   cheap and starts guaranteeing drift, so this is a real file. scan.html
+   still carries its own copy — it is a tool, not a marketing page, and it
+   changes on a different schedule.
+
+   THE RULES THIS SYSTEM FOLLOWS
+   1. Structure carries the page, not atmosphere. Depth comes from changes of
+      plane (ink / canvas / paper) and from an actual column grid — never from
+      gradient haze or stacked drop shadows.
+   2. Rules, not shadows. A 1px line is the primary separator. Shadow appears
+      exactly once, on the one element that genuinely floats (the sticky bar),
+      and only after it has actually lifted.
+   3. Type does the work. A wide gap between display and body size, tight
+      tracking on the display, and the product's own measurements set large in
+      mono. The data is the ornament; there is no other.
+   4. Motion demonstrates or it does not ship. The only animations here
+      reproduce something the product actually does. Nothing fades up on
+      scroll, nothing floats, nothing pulses, nothing lifts on hover.
+   5. No status pills, no glow, no sliding arrows, no oversized ghost
+      numerals. If a thing is not interactive, it does not animate.
+
+   Scale: type ~1.25 ratio, space on a 4px base. Nothing is eyeballed.
+   ========================================================================== */
+
+:root {
+  /* ---- colour: identical values to tokens.css, WCAG AA verified there ---- */
+  --canvas: #faf9f5; --surface: #ffffff; --surface-2: #f5f0e8; --surface-3: #efe9de;
+  --line: #e2dbd2; --line-strong: #cfc7ba;
+  --text: #141413; --text-2: #3d3d3a; --text-3: #6c6a64;
+  --accent: #cc785c; --accent-text: #a25439; --accent-soft: #f7ece6; --on-accent: #141413;
+  --ok: #2a7346; --ok-soft: #e6f2ea;
+  /* ---- the ink plane: the same ink the generated report's hero uses, so the
+         site and the thing it produces read as one product ---- */
+  --ink: #141413; --ink-2: #1c1c1a; --ink-3: #0d0d0c;
+  --on-ink: #faf9f5;      /* 17.4:1 on ink */
+  --on-ink-2: #b5b1a8;    /*  8.6:1 on ink — body text */
+  --on-ink-3: #918e86;    /*  5.2:1 on ink — the dimmest allowed, and only on SOLID ink.
+                              A translucent bar composites lighter and breaks this;
+                              our own axe run caught exactly that once already. */
+  --ink-line: rgba(250,249,245,.16);
+  --pass: #8fd0a8; --fail: #e08b78;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Tiempos Headline", "Iowan Old Style", Palatino, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  /* ---- type scale, ~1.25 ratio ---- */
+  --fs-xs: 12px; --fs-sm: 14px; --fs-md: 16px; --fs-lg: 19px; --fs-xl: 24px;
+  --fs-2xl: 30px; --fs-3xl: 40px; --fs-4xl: 52px;
+  /* ---- space scale, 4px base ---- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+  --wide: 1200px;
+  --r: 4px;   /* one radius, everywhere. Editorial, not app-store. */
+}
+
+* { box-sizing: border-box }
+html { scroll-behavior: smooth }
+body { margin: 0; background: var(--canvas); color: var(--text); font: var(--fs-md)/1.6 var(--font-ui); -webkit-font-smoothing: antialiased }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: -.02em; margin: 0; text-wrap: balance }
+p { margin: 0 }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px }
+.band :focus-visible, .nav :focus-visible { outline-color: var(--accent) }
+.skip { position: absolute; left: -9999px }
+.skip:focus { left: var(--sp-4); top: var(--sp-4); z-index: 99; background: var(--surface); padding: 10px 16px; border: 1px solid var(--text) }
+
+/* ---------------------------------------------------- the grid everything sits on */
+.wrap { max-width: var(--wide); margin: 0 auto; padding: 0 var(--sp-6) }
+/* A mono label in the left column, prose in the right. It is the shape of a
+   spec sheet, which is what this product produces. */
+.row { display: grid; gap: var(--sp-4) }
+@media (min-width: 900px) { .row { grid-template-columns: 148px minmax(0, 1fr); gap: var(--sp-7) } }
+.label { font: 500 var(--fs-xs)/1.4 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding-top: 6px }
+.band .label { color: var(--on-ink-3) }
+.gap-top { margin-top: var(--sp-6) }
+
+/* ===================================================================== buttons
+   Three weights, one radius, no motion. A link that navigates stays a link —
+   the browser keeps "open in a new tab" and assistive tech keeps the
+   go-somewhere / do-something distinction — while a control that acts on the
+   page is a real <button>. Both wear the same clothes. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  font: 600 var(--fs-sm)/1 var(--font-ui); letter-spacing: .01em;
+  border: 1px solid var(--text); border-radius: var(--r); padding: 13px 20px;
+  background: transparent; color: var(--text); text-decoration: none; cursor: pointer;
+  transition: background .14s var(--ease), color .14s var(--ease), border-color .14s var(--ease);
+}
+.btn:hover { background: var(--text); color: var(--canvas) }
+.btn-solid { background: var(--text); color: var(--canvas) }
+.btn-solid:hover { background: var(--accent-text); border-color: var(--accent-text); color: #fff }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: var(--on-accent) }
+.btn-accent:hover { background: var(--accent-text); border-color: var(--accent-text); color: #fff }
+.btn-quiet { border-color: var(--line-strong); color: var(--text-2) }
+.btn-quiet:hover { background: transparent; border-color: var(--text); color: var(--text) }
+.band .btn, .nav .btn { border-color: var(--ink-line); color: var(--on-ink) }
+.band .btn:hover, .nav .btn:hover { background: var(--on-ink); color: var(--ink); border-color: var(--on-ink) }
+.band .btn-accent, .nav .btn-accent { background: var(--accent); border-color: var(--accent); color: var(--on-accent) }
+.band .btn-accent:hover, .nav .btn-accent:hover { background: var(--on-ink); border-color: var(--on-ink); color: var(--ink) }
+.btn-sm { padding: 9px 14px; font-size: var(--fs-xs) }
+.btn-block { width: 100% }
+.btn[disabled] { cursor: default; border-style: dashed; color: var(--text-3) }
+.btn[disabled]:hover { background: transparent; color: var(--text-3) }
+.band .btn[disabled] { color: var(--on-ink-3); border-color: var(--ink-line) }
+.band .btn[disabled]:hover { background: transparent; color: var(--on-ink-3) }
+.btns { display: flex; flex-wrap: wrap; gap: var(--sp-3) }
+
+/* ========================================================================= nav
+   The one element that genuinely sits above the content, so the one element
+   allowed a shadow — and only once it has actually lifted. A shadow on an
+   element flush with the page edge is drawn under nothing. */
+.nav { position: sticky; top: 0; z-index: 20; background: var(--ink); border-bottom: 1px solid var(--ink-line) }
+.nav.lifted { box-shadow: 0 14px 30px -24px rgba(0,0,0,.9) }
+.nav-row { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-6); max-width: var(--wide); margin: 0 auto }
+.brand { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-lg); color: var(--on-ink); text-decoration: none; margin-right: auto }
+.brand .mark { width: 24px; height: 24px; border-radius: var(--r); background: var(--accent); display: grid; place-items: center; flex: none; --c: 56.55; color: var(--on-accent); padding: 4px }
+.brand .mark svg { width: 100%; height: 100%; display: block; transform: rotate(47deg) }
+.brand .mark circle { fill: none; stroke-width: 3.5; stroke-linecap: round }
+.brand .mark .track { stroke: currentColor; opacity: .22 }
+.brand .mark .arc { stroke: currentColor; stroke-dasharray: var(--c); stroke-dashoffset: calc(var(--c) * .26) }
+.brand .by { font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--on-ink-2); border-left: 1px solid var(--ink-line); padding-left: var(--sp-2); align-self: center }
+.nav [aria-current="page"] { background: var(--on-ink); color: var(--ink); border-color: var(--on-ink) }
+@media (max-width: 680px) { .nav .hide-sm { display: none } }
+
+/* ====================================================================== planes
+   Three surfaces, and that is the whole depth system: ink, canvas, paper.
+   A section changes plane or it changes nothing. */
+.band { background: var(--ink); color: var(--on-ink) }
+.paper { background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line) }
+section { padding: var(--sp-9) 0 }
+section.flush { padding-top: 0 }
+section + section:not(.paper) { border-top: 1px solid var(--line) }
+.band section + section:not(.paper) { border-color: var(--ink-line) }
+.head h2 { font-size: clamp(28px, 3.4vw, var(--fs-3xl)); line-height: 1.14; max-width: 21ch }
+.head p { color: var(--text-2); font-size: var(--fs-lg); line-height: 1.55; max-width: 60ch; margin-top: var(--sp-4) }
+.band .head p { color: var(--on-ink-2) }
+.h2-lg { font-size: clamp(30px, 4vw, 46px); line-height: 1.1; max-width: 18ch }
+.lede { color: var(--on-ink-2); font-size: var(--fs-lg); margin-top: var(--sp-4); max-width: 54ch }
+
+/* ======================================================================= hero */
+.hero { padding: var(--sp-9) 0 var(--sp-8) }
+.hero h1 { font-size: clamp(40px, 6.2vw, 74px); line-height: 1.02; letter-spacing: -.035em; max-width: 15ch; margin-bottom: var(--sp-6) }
+/* The page's one typographic idea, and it is not decoration: the two words the
+   product turns on are set exactly the way the product tags a finding — a
+   solid rule under what was measured, a dotted rule under what was judged.
+   The same two rules appear on every finding in every report we generate. */
+.hero h1 .measured, .hero h1 .judged { font-style: normal; white-space: nowrap; padding-bottom: .04em }
+.hero h1 .measured { border-bottom: 3px solid var(--on-ink) }
+.hero h1 .judged { color: var(--accent); border-bottom: 3px dotted var(--accent) }
+.hero-sub { color: var(--on-ink-2); max-width: 54ch; font-size: var(--fs-lg); line-height: 1.55; margin-bottom: var(--sp-6) }
+.hero-note { display: block; margin-top: var(--sp-4); font: 500 var(--fs-xs)/1.5 var(--font-mono); color: var(--on-ink-3); letter-spacing: .03em }
+.hero-grid { display: grid; gap: var(--sp-8) }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 468px); align-items: start } }
+
+/* ------------------------------------------------------------ pipeline demo
+   The landing page's only animation, and it earns its place: it replays the
+   four passes a real finding goes through, with the tag and the verdict
+   changing exactly as they change in the product. */
+.demo { border: 1px solid var(--ink-line); border-radius: var(--r); background: var(--ink-2) }
+.demo-bar { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--ink-line) }
+.demo-bar .file { font: 500 var(--fs-xs)/1 var(--font-mono); color: var(--on-ink-2); letter-spacing: .02em }
+.ctl { margin-left: auto; font: 500 var(--fs-xs)/1 var(--font-mono); color: var(--on-ink-2); background: transparent; border: 1px solid var(--ink-line); border-radius: var(--r); padding: 7px 11px; cursor: pointer; letter-spacing: .05em; text-transform: uppercase }
+.ctl:hover { color: var(--on-ink); border-color: var(--on-ink-2) }
+/* The four phases as a real progress track, not a decorative stepper. */
+.phases { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--ink-line) }
+.phase { padding: var(--sp-3) var(--sp-2); text-align: center; font: 500 10.5px/1.3 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--on-ink-3); border-right: 1px solid var(--ink-line); position: relative }
+.phase:last-child { border-right: 0 }
+.phase[data-on="1"] { color: var(--on-ink) }
+.phase[data-on="1"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent) }
+.demo-body { padding: var(--sp-4); display: grid; gap: var(--sp-3); min-height: 328px; align-content: start }
+/* JS pins this to the tallest frame once it runs; the value above is only the
+   floor for the moment before that, and for no-JS. */
+.fnd { border: 1px solid var(--ink-line); border-left-width: 3px; border-radius: var(--r); padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-2) }
+.fnd[data-kind="measured"] { border-left-color: var(--on-ink) }
+.fnd[data-kind="judged"] { border-left-style: dotted; border-left-width: 4px; border-left-color: var(--accent) }
+.fnd-top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap }
+.tag { font: 700 10px/1 var(--font-mono); letter-spacing: .08em; padding: 5px 7px; border-radius: var(--r) }
+.tag-measured { background: var(--on-ink); color: var(--ink) }
+.tag-judged { background: var(--accent); color: var(--on-accent) }
+.tag-wcag { background: transparent; border: 1px solid var(--ink-line); color: var(--on-ink-2); font-weight: 500 }
+.fnd-sel { font: 500 var(--fs-xs)/1.5 var(--font-mono); color: var(--on-ink-3); margin-left: auto }
+.fnd-txt { font-size: 14px; color: var(--on-ink-2); line-height: 1.5 }
+.fnd-txt.dim { color: var(--on-ink-3) }
+.fnd-txt b { color: var(--on-ink-2); font-weight: 600 }
+/* The crawl log. It stays on screen for the rest of the sequence, so the
+   panel is never one sentence in a large empty box. */
+.crawl { display: grid; gap: 2px; font: 500 var(--fs-xs)/1.9 var(--font-mono); letter-spacing: .02em }
+.crawl-row { color: var(--on-ink-2); display: flex; gap: var(--sp-3) }
+.crawl-row .ok { color: var(--pass); width: 3ch }
+.crawl-row .wait { color: var(--on-ink-3); width: 3ch }
+.crawl-row.busy { color: var(--on-ink-3) }
+
+.code { font: 500 12.5px/1.65 var(--font-mono); background: var(--ink-3); border: 1px solid var(--ink-line); border-radius: var(--r); padding: var(--sp-3); overflow-x: auto; white-space: pre; color: var(--on-ink-2); margin: 0 }
+.code .add { color: var(--pass) } .code .del { color: var(--fail) }
+.verdict { display: flex; align-items: center; font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; padding: 11px var(--sp-3); border-radius: var(--r); border: 1px solid }
+.verdict[data-v="pass"] { color: var(--pass); border-color: rgba(143,208,168,.42) }
+.verdict[data-v="wait"] { color: var(--on-ink-2); border-color: var(--ink-line) }
+/* The only moving decoration on the site, and it exists only while a line is
+   actually being written. */
+.cur { display: inline-block; width: 7px; height: 1em; background: var(--accent); vertical-align: -.14em; margin-left: 3px; animation: blink 1s steps(1) infinite }
+@keyframes blink { 50% { opacity: 0 } }
+
+/* ------------------------------------------------------------- measurements */
+.metrics { display: grid; border-top: 1px solid var(--ink-line) }
+@media (min-width: 820px) { .metrics { grid-template-columns: repeat(3, 1fr) } }
+.metric { padding: var(--sp-6) 0; border-bottom: 1px solid var(--ink-line) }
+@media (min-width: 820px) {
+  .metric { border-bottom: 0; border-right: 1px solid var(--ink-line); padding-right: var(--sp-6) }
+  .metric + .metric { padding-left: var(--sp-6) }
+  .metric:last-child { border-right: 0; padding-right: 0 }
+}
+.metric b { display: block; font: 500 clamp(34px, 4.4vw, 52px)/1 var(--font-mono); letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-bottom: var(--sp-3); color: var(--on-ink) }
+.metric b i { font-style: normal; color: var(--on-ink-3) }
+.metric span { display: block; font-size: 14.5px; color: var(--on-ink-2); line-height: 1.5; max-width: 36ch }
+
+/* ------------------------------------------------------------------ passes */
+.passes { border-top: 1px solid var(--line); margin-top: var(--sp-7) }
+.pass { display: grid; gap: var(--sp-3); padding: var(--sp-6) 0; border-bottom: 1px solid var(--line) }
+@media (min-width: 900px) { .pass { grid-template-columns: 148px minmax(0, 1fr) 240px; gap: var(--sp-7); align-items: baseline } }
+.pass h3 { font-size: var(--fs-xl); line-height: 1.25 }
+.pass p { color: var(--text-2); font-size: 15.5px; line-height: 1.6; margin-top: var(--sp-2) }
+.pass .yield { font: 500 var(--fs-xs)/1.5 var(--font-mono); color: var(--text-3) }
+@media (min-width: 900px) { .pass .yield { text-align: right } }
+
+/* ------------------------------------------------------------ audits table
+   A table, because it is tabular data. Cards would have been decoration
+   arranged around the same eight rows. */
+.audits { width: 100%; border-collapse: collapse; margin-top: var(--sp-7) }
+.audits caption { text-align: left; font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding-bottom: var(--sp-4) }
+.audits th { text-align: left; font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 0 var(--sp-4) var(--sp-3) 0; border-bottom: 1px solid var(--line-strong); white-space: nowrap }
+.audits td { padding: var(--sp-4) var(--sp-4) var(--sp-4) 0; border-bottom: 1px solid var(--line); vertical-align: baseline; font-size: 15px }
+.audits tr:hover td { background: var(--surface) }
+.audits .site { font-family: var(--font-display); font-size: var(--fs-lg) }
+.audits .n { font: 500 var(--fs-md)/1.4 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--accent-text); white-space: nowrap }
+.audits .what { color: var(--text-2); line-height: 1.5 }
+.audits td:last-child { padding-right: 0; text-align: right; white-space: nowrap }
+.audits a.read { font: 600 var(--fs-xs)/1 var(--font-ui); color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: 3px }
+.audits a.read:hover { border-color: var(--text) }
+@media (max-width: 780px) {
+  .audits, .audits tbody, .audits tr, .audits td { display: block; width: 100% }
+  .audits thead { position: absolute; left: -9999px }
+  .audits tr { border-bottom: 1px solid var(--line); padding: var(--sp-4) 0 }
+  .audits tr:hover td { background: transparent }
+  .audits td { border: 0; padding: 2px 0 }
+  .audits td:last-child { text-align: left; padding-top: var(--sp-3) }
+}
+
+/* ----------------------------------------------------------------- funding */
+.fund { display: grid; gap: var(--sp-7); margin-top: var(--sp-7) }
+@media (min-width: 940px) { .fund { grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: var(--sp-8) } }
+.fund-bar { height: 4px; background: var(--line-strong); overflow: hidden; margin-bottom: var(--sp-3) }
+.fund-bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 1s var(--ease) }
+.fund-nums { display: flex; justify-content: space-between; gap: var(--sp-3); font: 500 var(--fs-xs)/1.5 var(--font-mono); color: var(--text-3); margin-bottom: var(--sp-5); flex-wrap: wrap }
+.fund-nums b { color: var(--text); font-weight: 500 }
+.amounts { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3) }
+.amounts .btn { flex: 1; font-family: var(--font-mono) }
+.amt-what { font-size: 13.5px; color: var(--text-2); line-height: 1.5; min-height: 3em; margin-bottom: var(--sp-4) }
+.tiers { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line) }
+.tier { display: grid; gap: var(--sp-2); padding: var(--sp-5) 0; border-bottom: 1px solid var(--line) }
+@media (min-width: 620px) { .tier { grid-template-columns: 60px minmax(0, 1fr) 68px; gap: var(--sp-5); align-items: baseline } }
+.tier .amt { font: 500 var(--fs-lg)/1 var(--font-mono); color: var(--text) }
+.tier b { display: block; font-weight: 600; font-size: 15.5px; margin-bottom: 3px }
+.tier p { font-size: 14px; color: var(--text-2); line-height: 1.55 }
+.tier .done { font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ok); text-align: right }
+.tier.reached .amt { color: var(--ok) }
+
+/* ====================================================================== plans
+   A comparison table, not three cards. Cards make three things look alike;
+   what a reader needs here is the difference, row by row. */
+.plan-grid { display: grid; border-top: 1px solid var(--line); margin-top: var(--sp-7) }
+@media (min-width: 900px) { .plan-grid { grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(0, 1fr)) } }
+.plan-col { border-bottom: 1px solid var(--line); padding: var(--sp-6) 0 }
+@media (min-width: 900px) {
+  .plan-col { border-right: 1px solid var(--line); padding: var(--sp-6) var(--sp-5) }
+  .plan-col:first-child { padding-left: 0 }
+  .plan-col:last-child { border-right: 0; padding-right: 0 }
+}
+.plan-col h2 { font-size: var(--fs-xl); line-height: 1.25; margin-bottom: var(--sp-2) }
+.plan-col .state { display: inline-block; font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; padding: 5px 8px; border-radius: var(--r); margin-bottom: var(--sp-4) }
+.state-live { background: var(--ok-soft); color: var(--ok) }
+.state-soon { background: transparent; border: 1px dashed var(--line-strong); color: var(--text-3) }
+.plan-col .price { font: 400 var(--fs-2xl)/1 var(--font-display); margin-bottom: var(--sp-2) }
+.plan-col .price.tbd { font-size: var(--fs-lg); color: var(--text-2) }
+.plan-col .price small { font: 500 var(--fs-xs)/1 var(--font-mono); color: var(--text-3); display: block; margin-top: var(--sp-2); letter-spacing: .03em }
+.plan-col .sell { color: var(--text-2); font-size: 14.5px; line-height: 1.55; margin-bottom: var(--sp-5) }
+.plan-col .btn { width: 100% }
+.plan-col .after { font-size: 12.5px; color: var(--text-3); line-height: 1.5; margin-top: var(--sp-3) }
+.plan-col.soon { background: repeating-linear-gradient(-45deg, transparent 0 12px, rgba(20,20,19,.014) 12px 24px) }
+
+/* The row-by-row comparison. `th` on the left, one cell per plan. */
+.cmp { width: 100%; border-collapse: collapse; margin-top: var(--sp-8) }
+.cmp caption { text-align: left; font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding-bottom: var(--sp-4) }
+.cmp th[scope="col"] { font: 600 var(--fs-sm)/1 var(--font-ui); text-align: left; color: var(--text); padding: 0 var(--sp-4) var(--sp-3); border-bottom: 1px solid var(--line-strong) }
+.cmp th[scope="row"] { font: 400 15px/1.45 var(--font-ui); text-align: left; color: var(--text); padding: var(--sp-4) var(--sp-5) var(--sp-4) 0; border-bottom: 1px solid var(--line); vertical-align: baseline; width: 40% }
+.cmp td { padding: var(--sp-4); border-bottom: 1px solid var(--line); vertical-align: baseline; font-size: 14.5px; color: var(--text-2); line-height: 1.45 }
+.cmp .yes { color: var(--text); font-weight: 600 }
+.cmp .no { color: var(--text-3) }
+.cmp tbody tr:hover th[scope="row"], .cmp tbody tr:hover td { background: var(--surface) }
+@media (max-width: 820px) {
+  .cmp caption { padding-bottom: var(--sp-2) }
+  .cmp, .cmp tbody, .cmp tr, .cmp th, .cmp td { display: block; width: auto }
+  .cmp thead { position: absolute; left: -9999px }
+  .cmp tbody tr { border-bottom: 1px solid var(--line-strong); padding: var(--sp-4) 0 }
+  .cmp th[scope="row"] { width: auto; border: 0; padding: 0 0 var(--sp-2); font-weight: 600 }
+  .cmp td { border: 0; padding: 3px 0 3px var(--sp-4); border-left: 2px solid var(--line) }
+  .cmp td::before { content: attr(data-plan) ": "; font: 500 var(--fs-xs)/1 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--text-3) }
+  .cmp tbody tr:hover th[scope="row"], .cmp tbody tr:hover td { background: transparent }
+}
+
+.cap-row { display: grid; gap: var(--sp-5); margin-top: var(--sp-7) }
+@media (min-width: 1000px) { .cap-row { grid-template-columns: repeat(3, 1fr) } }
+.cap figure, figure.cap { margin: 0 }
+
+/* --------------------------------------------------------- capability demos
+   Three small animations on /plans, each one showing what its plan actually
+   does to a site rather than describing it. Same grid in all three; only the
+   behaviour differs, which is the point of the comparison. */
+.cap { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden }
+.cap-bar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--text-3) }
+.cap-bar .ctl { color: var(--text-3); border-color: var(--line-strong) }
+.cap-bar .ctl:hover { color: var(--text); border-color: var(--text) }
+/* Three fixed rows — an optional strip, the page grid, the caption — so the
+   three demos line up across the row even though only one of them has a login
+   gate and only one has a diff strip. Aligning them by eye would have drifted
+   the moment any caption wrapped to a second line. */
+.cap-stage { padding: var(--sp-5); display: grid; grid-template-rows: 34px auto 3.2em; align-content: start; gap: var(--sp-4) }
+.cap-slot { align-self: center }
+/* A site as a grid of pages. Scanned pages fill in; unreachable ones stay
+   outlined. This is the actual difference between the plans. */
+.pages { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px }
+.pg { aspect-ratio: 1; border: 1px solid var(--line-strong); border-radius: 2px; background: transparent; transition: background .3s var(--ease), border-color .3s var(--ease) }
+.pg[data-s="scan"] { background: var(--accent); border-color: var(--accent) }
+.pg[data-s="done"] { background: var(--text); border-color: var(--text) }
+/* Out of reach, not absent — a dashed rule the reader can still count. At
+   --line it dropped to almost nothing against paper, which read as "nineteen
+   pages do not exist" rather than "nineteen pages this plan cannot open". */
+.pg[data-s="locked"] { border-style: dashed; border-color: var(--line-strong) }
+.cap-note { font: 500 var(--fs-xs)/1.6 var(--font-mono); color: var(--text-3); letter-spacing: .02em; align-self: start }
+.cap-note b { color: var(--text); font-weight: 500 }
+/* The login gate, for the Team demo. */
+.gate { display: flex; align-items: center; gap: var(--sp-3); border: 1px dashed var(--line-strong); border-radius: var(--r); padding: var(--sp-3) var(--sp-4); font: 500 var(--fs-xs)/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); transition: border-color .3s var(--ease), color .3s var(--ease) }
+.gate[data-open="1"] { border-style: solid; border-color: var(--ok); color: var(--ok) }
+/* The diff/re-scan strip, for the Pro demo. */
+.strip { display: grid; gap: 5px }
+.bar { height: 9px; border-radius: 2px; background: var(--surface-3); position: relative; overflow: hidden }
+.bar i { position: absolute; inset: 0 100% 0 0; background: var(--accent); transition: right .5s var(--ease) }
+.bar[data-fill="1"] i { right: 0 }
+.bar[data-fill="1"].ok i { background: var(--ok) }
+
+/* ====================================================================== footer */
+footer { background: var(--ink); color: var(--on-ink-2); padding: var(--sp-8) 0; font-size: 14px }
+.foot { display: grid; gap: var(--sp-6) }
+@media (min-width: 820px) { .foot { grid-template-columns: minmax(0, 1fr) auto; align-items: start } }
+.foot p { max-width: 56ch; line-height: 1.65 }
+.colophon { margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: 1px solid var(--ink-line); font: 500 var(--fs-xs)/1.6 var(--font-mono); letter-spacing: .04em; color: var(--on-ink-3) }
+.colophon b { color: var(--on-ink-2); font-weight: 500 }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto }
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important }
+}

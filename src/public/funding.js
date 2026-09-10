@@ -6,7 +6,10 @@ export const GOALS = [
   { at: 15, title: 'A real domain + HTTPS', why: 'The public scanner runs on a bare IP over plain HTTP today. A domain and a cert are the whole fix.' },
   { at: 40, title: 'AI review on free scans', why: 'A paid Gemini tier, so public scans get the alt-text / link-text / heading judgment calls, not just the measurable rules.' },
   { at: 90, title: 'Bigger scans for everyone', why: 'More VPS headroom: past 5 pages per scan, and more scans per hour before the rate limit bites.' },
-  { at: 200, title: 'Close the known gaps', why: 'DNS-rebind protection on the SSRF guard, and a blocked-page detector that catches 200-status bot-defense fallbacks.' },
+  // The 200-status failover detector shipped 2026-09-10, so the goal that
+  // named it had to change or the ladder would be selling something already
+  // done. What remains of that gap is the harder half.
+  { at: 200, title: 'Close the last SSRF gap', why: 'Full DNS-rebind protection: pinning the resolved IP at the socket, not just re-resolving every request. The remaining window is small, and it is still a window.' },
 ];
 
 export const CURRENCY = '$';
