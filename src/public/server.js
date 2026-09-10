@@ -52,7 +52,16 @@ const AUDIT_PAGE_STYLE = `
   nav.top { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; max-width:760px; margin:0 auto }
   .brand { display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-size:16px; color:var(--text); text-decoration:none }
   .brand .mark { width:22px; height:22px; border-radius:6px; background:var(--accent); display:grid; place-items:center; flex:none }
-  .brand .mark svg { width:13px; height:13px }
+  .brand .mark { --c:56.55; color:#141413; padding:4px }
+.brand .mark svg { width:100%; height:100%; display:block; transform:rotate(47deg) }
+.brand .mark circle { fill:none; stroke-width:3.5; stroke-linecap:round }
+.brand .mark .track { stroke:currentColor; opacity:.22 }
+.brand .mark .arc { stroke:currentColor; stroke-dasharray:var(--c); stroke-dashoffset:calc(var(--c)*.26) }
+.brand .mark[data-state="running"] svg { animation:c-spin 1.6s linear infinite }
+.brand .mark[data-state="running"] .arc { animation:c-chase 1.6s var(--ease) infinite }
+@keyframes c-spin { from { rotate:0deg } to { rotate:360deg } }
+@keyframes c-chase { 0% { stroke-dashoffset:calc(var(--c)*.92) } 50% { stroke-dashoffset:calc(var(--c)*.22) } 100% { stroke-dashoffset:calc(var(--c)*.92) } }
+@media (prefers-reduced-motion:reduce) { .brand .mark[data-state="running"] svg, .brand .mark[data-state="running"] .arc { animation:none } .brand .mark[data-state="running"] .arc { stroke-dashoffset:calc(var(--c)*.5) } }
   nav.top a.tool { font-size:13px; font-weight:600; color:var(--text); text-decoration:none; border:1px solid var(--line-strong); border-radius:8px; padding:7px 13px; background:var(--surface) }
   nav.top a.tool:hover { border-color:var(--accent) }
   main { max-width: 700px; margin: 0 auto; padding: 8px 24px 80px }
@@ -229,7 +238,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
       finishRun(db, runId);
       const catalogue = criteriaCatalogue(kb ?? { chunks: [] });
       writeJson(db, runId, join(runDir(runId), 'report.json'), catalogue);
-      writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()) });
+      writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()), comingSoon: true });
       jobs.set(runId, { status: 'done' });
     } catch (err) {
       setRunNotes(db, runId, `scan failed: ${err.message}`);
@@ -289,7 +298,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
 <title>${title} — Contrast</title><style>${AUDIT_PAGE_STYLE}</style></head>
 <body>
 <nav class="top">
-  <a class="brand" href="/"><span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 000 16z" fill="#141413"/></svg></span>Contrast</a>
+  <a class="brand" href="/"><span class="mark" data-state="idle"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>Contrast</a>
   <a class="tool" href="/scan">Try the free scanner</a>
 </nav>
 <main>${enhanceAuditHtml(markdownToHtml(md))}</main>
@@ -364,7 +373,7 @@ export function startPublicUi({ port = 8080, dbPath = 'runs/public.sqlite', know
         const runId = report[1];
         if (!getRun(db, runId)) return send(404, 'no such scan');
         const catalogue = criteriaCatalogue(kb ?? { chunks: [] });
-        writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()) });
+        writeHtml(db, runId, join(runDir(runId), 'report.html'), catalogue, { supportUrl: SUPPORT_URL, funding: fundingState(currentRaised()), comingSoon: true });
         res.writeHead(302, { location: `/runs/${encodeURIComponent(runId)}/report.html` });
         return res.end();
       }

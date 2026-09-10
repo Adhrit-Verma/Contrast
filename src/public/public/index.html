@@ -50,7 +50,16 @@
   }
   .brand { display: flex; align-items: center; gap: var(--sp-2); font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text); text-decoration: none }
   .brand .mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; flex: none }
-  .brand .mark svg { width: 15px; height: 15px }
+  .brand .mark { --c:56.55; color:var(--on-accent); padding:4px }
+.brand .mark svg { width:100%; height:100%; display:block; transform:rotate(47deg) }
+.brand .mark circle { fill:none; stroke-width:3.5; stroke-linecap:round }
+.brand .mark .track { stroke:currentColor; opacity:.22 }
+.brand .mark .arc { stroke:currentColor; stroke-dasharray:var(--c); stroke-dashoffset:calc(var(--c)*.26) }
+.brand .mark[data-state="running"] svg { animation:c-spin 1.6s linear infinite }
+.brand .mark[data-state="running"] .arc { animation:c-chase 1.6s var(--ease) infinite }
+@keyframes c-spin { from { rotate:0deg } to { rotate:360deg } }
+@keyframes c-chase { 0% { stroke-dashoffset:calc(var(--c)*.92) } 50% { stroke-dashoffset:calc(var(--c)*.22) } 100% { stroke-dashoffset:calc(var(--c)*.92) } }
+@media (prefers-reduced-motion:reduce) { .brand .mark[data-state="running"] svg, .brand .mark[data-state="running"] .arc { animation:none } .brand .mark[data-state="running"] .arc { stroke-dashoffset:calc(var(--c)*.5) } }
   nav.top a.tool {
     font-size: var(--fs-sm); font-weight: 600; color: var(--text); text-decoration: none;
     border: 1px solid var(--line-strong); border-radius: 9px; padding: 9px 16px; background: var(--surface);
@@ -217,7 +226,7 @@
 
 <nav class="top">
   <a class="brand" href="/">
-    <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 000 16z" fill="#141413"/></svg></span>
+    <span class="mark" data-state="idle"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>
     Contrast
   </a>
   <a class="tool" href="/scan">Try the free scanner</a>
@@ -324,6 +333,9 @@
   <p class="measure">Automated testing catches roughly 30–40% of WCAG issues. Nothing Contrast produces is a claim
   of conformance — every report says so on the page, not in a footnote.</p>
   <a href="/scan">Free scanner</a>
+  <!-- No opacity: dimming --text-3 lands at 3.41:1, under the 4.5:1 floor.
+       Our own axe run caught this — the same mistake twice in one day. -->
+  <p class="measure" style="margin-top:var(--sp-5)">Contrast is a <b>Vimoksh</b> project.</p>
 </footer>
 
 <script>

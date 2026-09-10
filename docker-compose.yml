@@ -29,10 +29,16 @@ services:
       # Never mounted into contrast-public: that service is meant to be open.
       - ./auth:/app/auth
     environment:
-      # Optional: pre-seed the key instead of pasting it into Settings after
+      # Optional: pre-seed the keys instead of pasting them into Settings after
       # first boot. Leave unset and use the dashboard's Settings tab instead —
-      # either way it ends up encrypted at rest, never in this file.
+      # either way they end up encrypted at rest, never in this file.
+      # Both are read from a .env file next to this one; see .env.example.
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # The paid vision/reasoning path. Deliberately NOT passed to
+      # contrast-public below: that service is reachable by strangers and holds
+      # no keys by design (decision #8).
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AI_MONTHLY_CEILING_USD=${AI_MONTHLY_CEILING_USD:-24}
 
   # Step 6: the public paste-a-URL funnel (src/public/server.js). Genuinely
   # separate from the service above — no config.json mount, no sessions/

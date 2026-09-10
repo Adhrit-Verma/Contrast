@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS scan_incidents (
 CREATE TABLE IF NOT EXISTS crawl_rules (
   id TEXT PRIMARY KEY, createdAt TEXT, patternType TEXT, pattern TEXT, action TEXT, note TEXT, sourceIncidentId TEXT
 );
+CREATE TABLE IF NOT EXISTS ai_spend (
+  id TEXT PRIMARY KEY, ts TEXT, provider TEXT, model TEXT, task TEXT,
+  inputTokens INTEGER, outputTokens INTEGER, costUsd REAL, runId TEXT, creditId TEXT
+);
+CREATE INDEX IF NOT EXISTS ai_spend_ts ON ai_spend (ts);
+CREATE TABLE IF NOT EXISTS credits (
+  id TEXT PRIMARY KEY, customerId TEXT, source TEXT, amountUsd REAL,
+  spentUsd REAL DEFAULT 0, createdAt TEXT, ref TEXT
+);
 `;
 
 export function openDb(path = 'runs/audit.sqlite') {

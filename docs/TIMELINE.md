@@ -16,6 +16,21 @@ Keep "Caught" honest. The bug list is what stops the same mistake twice.
 
 ---
 
+### 2026-09-10 — Wired the AI router into both run paths; unified the C mark
+**Shipped.** `cli.js` and `graph/run.js` now build the provider + budget instead of a bare Gemini client, so the paid model, free fallback, spending ceiling and degrade path apply to every assessment. Embeddings stay on Gemini (the knowledge base is indexed with them). Both paths print remaining budget before assessing. The public pages, generated reports, audit writeups, login page and funnel panel all use the dashboard's animated C mark, and the scan page's mark sweeps while a scan runs. 7 new wiring tests, 159/159 passing.
+**Caught.** The previous session's modules were **dead code** — nothing imported `provider.js`, `budget.js` or `openai.js`, and `monthlyCeilingUsd` was a **decorative control**: settable in the UI, persisted to config, read by nothing. A ceiling of $5 would have had no effect. Found only by grepping for importers rather than trusting the summary. Also: the new Vimoksh footer used `opacity:.8` and failed contrast at 3.41:1 — the same mistake as the ghost cards earlier the same day, caught the same way.
+**Decision.** #25 (a control that is not read is worse than an absent one).
+
+### 2026-09-10 — Key configuration, "coming soon" placeholders, Vimoksh colophon
+**Shipped.** `.env.example` as the single place a fresh install needs to touch — everything else already has a working default. OpenAI key + monthly ceiling + model IDs are now settable from the dashboard's Settings tab and stored encrypted at rest like the Gemini key. The public report gained a **Deeper analysis — Coming soon** section: five inert placeholder cards naming the judgment checks a rules engine cannot do, quoting no price and promising no date. Public pages and public reports now carry a "Contrast is a Vimoksh project" line.
+**Caught.** Our own axe run failed the new cards: `opacity:.75` on the container dragged the body text to **3.24:1**, under the 4.5:1 floor. Fixed by dropping the opacity and letting the dashed border carry the inert reading. Also verified the gating empirically — an admin-path report contains no coming-soon markup, no ghost cards, no support ask and no colophon, exactly as a client deliverable should.
+**Decision.** #24 (placeholders name no price and no date).
+
+### 2026-09-10 — AI budget ledger, provider router, OpenAI client
+**Shipped.** `src/ai/budget.js` (two-bucket money ledger: an operator monthly ceiling and per-payment credits, with a pre-flight `reserve()` and a `settle()` that records the provider's real usage), `src/ai/openai.js` (Responses API over built-in `fetch`, no SDK; strict JSON-schema translation; reuses `limiter.js` and `ai_cache`), and `src/ai/provider.js` (routes paid→OpenAI, free→Gemini, neither→deterministic-only). New `ai_spend` and `credits` tables. 32 new tests, 152/152 passing.
+**Caught.** Verifying model IDs at source — a gate the plan itself set — found the planned `gpt-5.4`/`gpt-5.4-mini` do not exist; the current line is `gpt-5.6-sol`/`terra`/`luna` at materially different prices. Writing the router's tests then exposed a real bug in it: the budget estimate sat *outside* the try block, so an unpriced model threw instead of degrading, in direct violation of #18. Also a test-harness bug where a synchronous `finally` closed the database before the async assertion finished.
+**Decision.** #22 (fetch over SDK), #23 (usage read, never estimated). Commercial correction recorded privately as B8.
+
 ### 2026-09-09 — Documentation set; commercial docs split out of the public repo
 **Shipped.** Created `docs/ARCHITECTURE.md`, `docs/DATA-FLOW.md`, `docs/DECISIONS.md`, `docs/TIMELINE.md`, and a documentation map in `CLAUDE.md`. Commercial material moved to `docs/private/` and gitignored. Added the missing `funnel` and `set-password` npm scripts.
 **Caught.** `CLAUDE.md` still claimed 68/68 tests (actually 120). `package.json` was missing two commands that already existed. Research and planning drafts were about to be committed to a **public** repo — caught before the commit, not after.

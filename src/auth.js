@@ -131,9 +131,9 @@ export const loginPage = ({ error = null, title = 'Contrast' } = {}) => `<!docty
 </head><body>
 <main class="content" style="max-width:380px;margin:12vh auto" role="main">
   <div style="display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-5)">
-    <span style="width:32px;height:32px;border-radius:var(--r-2);background:var(--accent);display:grid;place-items:center;flex:none">
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4a8 8 0 000 16z" fill="#141413"/></svg>
-    </span>
+    <span class="brand" style="padding:0;height:auto;border:0"><span class="mark" data-state="idle" style="width:32px;height:32px;border-radius:var(--r-2)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg>
+    </span></span>
     <b style="font-family:var(--font-display);font-size:var(--fs-title)">${title}</b>
   </div>
   <h1 style="margin-bottom:var(--s-2)">Sign in</h1>

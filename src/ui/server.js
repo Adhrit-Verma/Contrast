@@ -119,12 +119,19 @@ export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
       if (url.pathname === '/api/settings') {
         const dir = cfg.session?.dir ?? 'sessions';
         if (req.method === 'GET') {
-          const key = loadSecrets(dir).GEMINI_API_KEY ?? process.env.GEMINI_API_KEY ?? null;
+          const stored = loadSecrets(dir);
+          const key = stored.GEMINI_API_KEY ?? process.env.GEMINI_API_KEY ?? null;
+          const openaiKey = stored.OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? null;
           return json(200, {
             keyPreview: preview(key),           // never the key itself
-            keyFromEnv: !loadSecrets(dir).GEMINI_API_KEY && !!process.env.GEMINI_API_KEY,
+            keyFromEnv: !stored.GEMINI_API_KEY && !!process.env.GEMINI_API_KEY,
+            openaiKeyPreview: preview(openaiKey),
+            openaiKeyFromEnv: !stored.OPENAI_API_KEY && !!process.env.OPENAI_API_KEY,
             model: cfg.ai?.model ?? '',
             embedModel: cfg.ai?.embedModel ?? '',
+            openaiModel: cfg.ai?.openaiModel ?? '',
+            openaiModelReasoning: cfg.ai?.openaiModelReasoning ?? '',
+            monthlyCeilingUsd: cfg.ai?.monthlyCeilingUsd ?? 24,
             tier: cfg.ai?.tier ?? 'free',
             rpm: cfg.ai?.rpm ?? 15,
             dailyCap: cfg.ai?.dailyCap ?? 1000,
@@ -136,8 +143,12 @@ export function startUi({ cfg, port = 4321, root = 'runs' } = {}) {
         if (problem) return json(403, { error: problem });
         const body = await readJson(req);
         if ('apiKey' in body) setSecret('GEMINI_API_KEY', body.apiKey.trim(), dir);
+        if ('openaiApiKey' in body) setSecret('OPENAI_API_KEY', body.openaiApiKey.trim(), dir);
         // Only these config keys may be written from a browser.
-        const patch = pick(body, ['model', 'embedModel', 'tier', 'rpm', 'dailyCap']);
+        const patch = pick(body, [
+          'model', 'embedModel', 'tier', 'rpm', 'dailyCap',
+          'openaiModel', 'openaiModelReasoning', 'monthlyCeilingUsd',
+        ]);
         if (Object.keys(patch).length) writeAiConfig(patch);
         Object.assign(cfg.ai ?? (cfg.ai = {}), patch);
         return json(200, { ok: true });
@@ -435,7 +446,7 @@ const pick = (obj, keys) =>
 function writeAiConfig(patch, path = 'config.json') {
   writeConfigPatch((c) => {
     c.ai = { ...c.ai, ...patch };
-    for (const n of ['rpm', 'dailyCap']) if (c.ai[n] != null) c.ai[n] = Number(c.ai[n]);
+    for (const n of ['rpm', 'dailyCap', 'monthlyCeilingUsd']) if (c.ai[n] != null) c.ai[n] = Number(c.ai[n]);
   }, path);
 }
 

@@ -9,6 +9,8 @@ import { buildAuditGraph } from './audit.js';
 import { openSession, interactiveLogin } from '../browser/session.js';
 import { openDb } from '../db.js';
 import { createGemini } from '../ai/gemini.js';
+import { createProvider, PAID } from '../ai/provider.js';
+import { createBudget, ceilingFromConfig } from '../ai/budget.js';
 import { loadKnowledge } from '../ai/knowledge.js';
 
 export async function runAudit(client, cfg, resumeThread = null) {
@@ -18,6 +20,11 @@ export async function runAudit(client, cfg, resumeThread = null) {
   }
   const db = openDb(client.db?.path ?? 'runs/audit.sqlite');
   const gemini = createGemini({ ai: client.ai, db });
+  // Embeddings stay on Gemini; assessment routes through the provider so the
+  // ceiling, the fallback and the degrade path apply here too. This is the path
+  // that runs unattended, so it is the one that most needs a spending cap.
+  const budget = createBudget({ db, ceilingUsd: ceilingFromConfig(client.ai) });
+  const provider = createProvider({ ai: client.ai, db, budget, gemini, defaultEntitlement: PAID });
   const kb = await loadKnowledge({ dir: client.ai?.knowledgeDir ?? 'knowledge', gemini });
   const session = await openSession(client, { autoLogin: false });
 
@@ -25,7 +32,7 @@ export async function runAudit(client, cfg, resumeThread = null) {
   mkdirSync(dirname(checkpointPath), { recursive: true });
   const checkpointer = SqliteSaver.fromConnString(checkpointPath);
 
-  const app = buildAuditGraph({ client, db, session, gemini, kb }).compile({ checkpointer });
+  const app = buildAuditGraph({ client, db, session, gemini: provider, kb }).compile({ checkpointer });
   const threadId = resumeThread ?? `${client.id}-${randomUUID().slice(0, 8)}`;
   const config = { configurable: { thread_id: threadId }, recursionLimit: client.graph?.recursionLimit ?? 2000 };
   console.log(`thread ${threadId}${resumeThread ? ' (resuming)' : ''} — resume with: node src/cli.js audit ${client.id} --resume ${threadId}`);
@@ -43,7 +50,7 @@ export async function runAudit(client, cfg, resumeThread = null) {
     }
     const final = await app.getState(config);
     console.log('\ndone:', JSON.stringify(final.values.reportPaths ?? {}, null, 2));
-    console.log('gemini:', JSON.stringify(gemini.stats()));
+    console.log('ai:', JSON.stringify(provider.stats()));
     if (final.values.errors?.length) console.log(`${final.values.errors.length} node errors — see the review queue in the report`);
   } finally {
     await session.browser.close().catch(() => {});

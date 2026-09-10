@@ -36,6 +36,26 @@ Each entry: **Decision → Why → What would change this.** If you find yoursel
 **Why.** axe + a11y tree + keyboard trace need no API at all and already constitute a real report — that is exactly what the free scanner ships today. A tool that sometimes refuses teaches visitors it is unreliable; a tool that says what it did and did not check stays trustworthy.
 **What would change this.** Nothing. This follows directly from #1 — a report is honest about its own coverage or it is not worth issuing.
 
+### #25 — A setting that nothing reads is worse than no setting · 2026-09-10
+**Decision.** A control does not ship until something consumes it. `ceilingFromConfig()` is the single resolver for the spending ceiling, and `test/wiring.test.js` pins that the number the Settings tab writes is the number that actually refuses a call.
+**Why.** `monthlyCeilingUsd` shipped as a field in config, a row in the settings API and an input in the UI — read by nothing. A user could set their ceiling to $5 and spend without limit, while believing they were capped. An absent control is a known gap; a decorative one is a false guarantee, and it is the kind that is only discovered by a bill.
+**What would change this.** Nothing. The general form: after adding a control, grep for its consumers before calling it done.
+
+### #24 — "Coming soon" placeholders name no price and no date · 2026-09-10
+**Decision.** The public report shows the five judgment checks as visibly inert cards that say *coming soon*, state plainly that they are not available on any plan, and quote no figure. The section renders only when the caller opts in, so an auditor's client-facing report never shows it.
+**Why.** Two reasons. Naming a price in a tracked file would put commercial terms in a public repo (Rule 2). Promising a date creates an obligation the roadmap cannot honour. And showing the gap at all is consistent with #1 and #6 — a free report that silently omitted the checks would be overstating its own coverage by omission.
+**What would change this.** The unlock flow shipping, at which point these become real locked features with a real price — announced deliberately, not leaked through a placeholder.
+
+### #22 — The AI provider clients use `fetch`, not a vendor SDK · 2026-09-10
+**Decision.** `src/ai/openai.js` speaks HTTP directly with Node's built-in `fetch`. No `openai` package.
+**Why.** The SDK's value is retries, typing and streaming. This codebase already has retries and backoff in `limiter.js`, schema validation in `validate.js`, and no streaming requirement — so the dependency would buy one POST's worth of ergonomics. It is the same reasoning that put `node:sqlite` here instead of an ORM and `node --test` instead of a framework.
+**What would change this.** Needing streaming, or the request shape becoming complex enough that hand-rolling it is the riskier option.
+
+### #23 — Token usage is read from the response, never estimated · 2026-09-10
+**Decision.** `reserve()` uses a rough pre-flight estimate purely to refuse an obviously unaffordable call. What gets recorded as spend is the provider's own reported usage. An unreadable usage block is an error, not a zero.
+**Why.** An estimate that drifts low makes a ceiling decorative. A silent zero makes every call look free — the ledger would read healthy right up until the card was declined.
+**What would change this.** Nothing.
+
 ### #21 — The AI provider sits behind a router, never called directly · 2026-09-09
 **Decision.** Pipeline code asks a router for an assessment; it never names a vendor. Provider selection, rate limiting, cost caps and caching stay in one place (`src/ai/`), and `ai_cache` keys on content, not vendor.
 **Why.** The vendor choice has already changed once. Code that names a provider at the call site turns the next change into a refactor instead of a config edit.

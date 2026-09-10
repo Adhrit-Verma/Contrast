@@ -961,6 +961,35 @@ async function viewSettings(el, alive = () => true) {
         requires a paid key with <code>tier: paid</code>.</p>
     </div>
 
+    <h2>OpenAI — vision &amp; reasoning</h2>
+    <p class="dim" style="font-size:var(--fs-sm)">
+      The paid path: the judgment calls a rules engine cannot make — alt-text quality, focus
+      visibility, text baked into images, colour-only signalling, reading order. Without a key
+      the pipeline still runs; it falls back to the free tier, then to deterministic-only, and
+      says so on the report rather than quietly skipping the checks.</p>
+    <div class="card" style="margin:8px 0 24px">
+      <div class="row">
+        <label class="field" style="flex:1 1 340px">
+          <span>API key ${s.openaiKeyPreview ? '<span class="badge ok">saved</span>' : '<span class="badge moderate">not set</span>'}</span>
+          <input type="password" id="s-openai-key" placeholder="${s.openaiKeyPreview ? esc(s.openaiKeyPreview) : 'paste a key to save it'}" autocomplete="off">
+        </label>
+        <label class="field"><span>Monthly ceiling (USD)</span>
+          <input type="number" id="s-ceiling" min="0" step="1" value="${s.monthlyCeilingUsd}"></label>
+        <button class="btn primary" id="s-save-openai">Save</button>
+      </div>
+      ${s.openaiKeyFromEnv ? '<p class="dim" style="margin:12px 0 0;font-size:var(--fs-sm)">Using the key from your <code>OPENAI_API_KEY</code> environment variable.</p>' : ''}
+      <div class="row" style="margin-top:12px">
+        <label class="field"><span>Bulk model</span>
+          <input type="text" id="s-openai-model" value="${esc(s.openaiModel)}" placeholder="gpt-5.6-luna"></label>
+        <label class="field"><span>Reasoning model</span>
+          <input type="text" id="s-openai-reasoning" value="${esc(s.openaiModelReasoning)}" placeholder="gpt-5.6-terra"></label>
+      </div>
+      <p class="dim" style="margin:12px 0 0;font-size:var(--fs-sm)">
+        <b>The ceiling is a hard stop, not a warning.</b> A call that would cross it is refused
+        before it is made, and the run degrades instead. Model IDs churn — they live here rather
+        than in code so a rename is a one-line edit.</p>
+    </div>
+
     <h2>Capabilities</h2>
     <p class="dim" style="font-size:var(--fs-sm)">
       <b>Detect setup</b> asks the API which models your key may use, ranks them, and tests the top
@@ -994,6 +1023,20 @@ async function viewSettings(el, alive = () => true) {
     } catch (err) { toast(err.message); }
   };
   $('#s-save').addEventListener('click', () => save());
+  $('#s-save-openai').addEventListener('click', async () => {
+    try {
+      const body = {
+        openaiModel: $('#s-openai-model').value.trim(),
+        openaiModelReasoning: $('#s-openai-reasoning').value.trim(),
+        monthlyCeilingUsd: Number($('#s-ceiling').value),
+      };
+      if ($('#s-openai-key').value.trim()) body.openaiApiKey = $('#s-openai-key').value;
+      await post('/api/settings', body);
+      $('#s-openai-key').value = '';
+      toast('Saved');
+      setView('settings');
+    } catch (err) { toast(err.message); }
+  });
   $('#s-save-advanced').addEventListener('click', () =>
     save({
       model: $('#s-model').value, embedModel: $('#s-embed').value,

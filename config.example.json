@@ -60,7 +60,10 @@
       "heading-semantics": true,
       "form-quality": true,
       "reading-order": true
-    }
+    },
+    "openaiModel": "gpt-5.6-luna",
+    "openaiModelReasoning": "gpt-5.6-terra",
+    "monthlyCeilingUsd": 24
   },
   "ui": {
     "headlessJobs": true,

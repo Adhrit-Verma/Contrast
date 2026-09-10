@@ -9,8 +9,26 @@ import { openDb, listRuns, getFindings, insert, insertFindings, insertReview, se
 import { scanPage, startRun, finishRun, runDir } from './scan/index.js';
 import { assessPage } from './ai/tasks.js';
 import { createGemini } from './ai/gemini.js';
+import { createProvider, PAID } from './ai/provider.js';
+import { createBudget, ceilingFromConfig } from './ai/budget.js';
 import { loadKnowledge, criteriaCatalogue } from './ai/knowledge.js';
 import { writeJson, writeHtml, writeDiffHtml, writeVpat, buildReport } from './report/index.js';
+
+/**
+ * The AI clients every command uses. Embeddings stay on Gemini — the knowledge
+ * base is indexed with them — but assessment goes through the router, so the
+ * paid model, the free fallback, the monthly spending ceiling and the degrade
+ * path all apply. An operator's own audit is a PAID entitlement: they are the
+ * customer, and it is their ceiling being spent.
+ */
+function aiClients(clientAi = {}, database) {
+  const gemini = createGemini({ ai: clientAi, db: database });
+  const budget = createBudget({ db: database, ceilingUsd: ceilingFromConfig(clientAi) });
+  const provider = createProvider({
+    ai: clientAi, db: database, budget, gemini, defaultEntitlement: PAID,
+  });
+  return { gemini, budget, provider };
+}
 
 const [cmd, ...args] = process.argv.slice(2);
 const cfg = loadConfig();
@@ -100,14 +118,15 @@ switch (cmd) {
     const client = clientConfig(cfg, need(args[0], USAGE));
     const runId = need(args[1], USAGE);
     const database = db();
-    const gemini = createGemini({ ai: client.ai, db: database });
+    const { gemini, budget, provider } = aiClients(client.ai, database);
     const kb = await loadKnowledge({ dir: client.ai.knowledgeDir ?? 'knowledge', gemini });
     const inventories = loadInventories(runId);
-    console.log(`assessing ${inventories.length} page inventories (${gemini.available ? gemini.model : 'NO API KEY — will fail'})`);
+    console.log(`assessing ${inventories.length} page inventories (${provider.available ? provider.model : 'NO API KEY — will fail'})`);
+    console.log(`  budget: $${budget.stats().remainingUsd} of $${budget.ceilingUsd} left this month`);
     let all = [];
     for (const inventory of inventories) {
       const ctx = { runId, pageUrl: inventory.pageUrl, screenshotDir: join(runDir(runId), 'screenshots') };
-      const { findings, errors } = await assessPage({ gemini, kb, inventory, ctx, cfg: client.ai });
+      const { findings, errors } = await assessPage({ gemini: provider, kb, inventory, ctx, cfg: client.ai });
       all.push(...findings);
       for (const e of errors) {
         console.log(`  ! ${e.task}: ${e.message}`);
@@ -117,7 +136,7 @@ switch (cmd) {
       }
     }
     insertFindings(database, all);
-    console.log(`${all.length} AI findings added to run ${runId}`, gemini.stats());
+    console.log(`${all.length} AI findings added to run ${runId}`, provider.stats());
     break;
   }
 
@@ -160,14 +179,15 @@ switch (cmd) {
       finishRun(database, runId);
 
       if (scope === 'assess' || scope === 'ai') {
-        const gemini = createGemini({ ai: client.ai, db: database });
+        const { gemini, budget, provider } = aiClients(client.ai, database);
         const kb = await loadKnowledge({ dir: client.ai.knowledgeDir ?? 'knowledge', gemini });
         const inventories = loadInventories(runId);
-        console.log(`[stage] assessing ${inventories.length} pages with ${gemini.model}`);
+        console.log(`[stage] assessing ${inventories.length} pages with ${provider.model}`);
+        console.log(`  budget: $${budget.stats().remainingUsd} of $${budget.ceilingUsd} left this month`);
         const ai = [];
         for (const inventory of inventories) {
           const ctx = { runId, pageUrl: inventory.pageUrl, screenshotDir: join(runDir(runId), 'screenshots') };
-          const { findings, errors } = await assessPage({ gemini, kb, inventory, ctx, cfg: client.ai });
+          const { findings, errors } = await assessPage({ gemini: provider, kb, inventory, ctx, cfg: client.ai });
           ai.push(...findings);
           for (const e of errors) {
             console.log(`  ! ${e.task}: ${e.message}`);

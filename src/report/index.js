@@ -169,7 +169,16 @@ code { font-family:var(--font-mono); font-size:.9em; overflow-wrap:anywhere }
 .hero-inner { max-width:1440px; margin:0 auto }
 .hero .brand { display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-size:17px; margin-bottom:36px; opacity:.85 }
 .hero .brand .mark { width:24px; height:24px; border-radius:7px; background:var(--accent); display:grid; place-items:center; flex:none }
-.hero .brand .mark svg { width:14px; height:14px }
+.hero .brand .mark { --c:56.55; color:var(--canvas); padding:4px }
+.hero .brand .mark svg { width:100%; height:100%; display:block; transform:rotate(47deg) }
+.hero .brand .mark circle { fill:none; stroke-width:3.5; stroke-linecap:round }
+.hero .brand .mark .track { stroke:currentColor; opacity:.22 }
+.hero .brand .mark .arc { stroke:currentColor; stroke-dasharray:var(--c); stroke-dashoffset:calc(var(--c)*.26) }
+.hero .brand .mark[data-state="running"] svg { animation:c-spin 1.6s linear infinite }
+.hero .brand .mark[data-state="running"] .arc { animation:c-chase 1.6s var(--ease) infinite }
+@keyframes c-spin { from { rotate:0deg } to { rotate:360deg } }
+@keyframes c-chase { 0% { stroke-dashoffset:calc(var(--c)*.92) } 50% { stroke-dashoffset:calc(var(--c)*.22) } 100% { stroke-dashoffset:calc(var(--c)*.92) } }
+@media (prefers-reduced-motion:reduce) { .hero .brand .mark[data-state="running"] svg, .hero .brand .mark[data-state="running"] .arc { animation:none } .hero .brand .mark[data-state="running"] .arc { stroke-dashoffset:calc(var(--c)*.5) } }
 .eyebrow { font-family:var(--font-mono); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#e0a794; margin:0 0 10px }
 .hero h1 { font-family:var(--font-display); font-weight:400; font-size:clamp(32px,5vw,54px); line-height:1.1; margin:0 0 10px; letter-spacing:-.01em }
 .hero .seed { font-family:var(--font-mono); font-size:15px; color:#d6d3cc; margin:0 0 6px; word-break:break-all }
@@ -259,6 +268,29 @@ details.coverage-detail summary { cursor:pointer; font-size:13.5px; font-weight:
 .finding-head { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px }
 .badge { font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.02em; text-transform:uppercase }
 .badge.det { background:var(--surface-2); color:var(--text-2) }
+.badge.soon { background:var(--accent-soft); color:var(--accent-text); vertical-align:middle; margin-left:10px }
+
+/* ------------------------------------------------------- coming soon
+   Placeholders for the judgment checks a rules engine cannot do. Muted and
+   obviously inert: this is an honest "not yet", not a teaser withholding
+   something that already exists. */
+.ghosts { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-top:16px }
+/* No opacity on the card: dimming the container dragged this text to 3.24:1,
+   under the 4.5:1 floor — our own axe run caught it. The dashed border and the
+   placeholder lines carry the "inert" reading without touching legibility. */
+.ghost { border:1px dashed var(--line-strong); border-radius:12px; padding:16px; background:var(--surface) }
+.ghost-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px }
+.ghost-head b { font-size:15px }
+.ghost .lock { font-size:13px; color:var(--text-3) }
+.ghost p { color:var(--text-2); font-size:13.5px; margin:0 0 12px; line-height:1.55 }
+.ghost-lines { display:grid; gap:6px }
+.ghost-lines i { display:block; height:7px; border-radius:999px; background:var(--surface-2) }
+.ghost-lines i:nth-child(2) { width:86% }
+.ghost-lines i:nth-child(3) { width:62% }
+
+/* ------------------------------------------------------------ colophon */
+.colophon { border-top:1px solid var(--line); margin-top:56px; padding:28px 0 8px; color:var(--text-3); font-size:13px }
+.colophon b { color:var(--text-2) }
 .badge.ai { background:var(--accent-soft); color:var(--accent-text) }
 .badge.sev-critical { background:var(--sev-critical-bg); color:var(--sev-critical-fg) }
 .badge.sev-serious { background:var(--sev-serious-bg); color:var(--sev-serious-fg) }
@@ -429,7 +461,45 @@ function supportHtml(supportUrl, funding) {
   </div></section>`;
 }
 
-export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, funding = null } = {}) {
+/**
+ * The five judgment calls a rules engine structurally cannot make. They are the
+ * ~60-70% of WCAG that automation misses, and they are what the paid tier is
+ * for — so a free report shows them as visibly absent rather than pretending
+ * the deterministic pass was the whole job.
+ *
+ * Placeholders only, until the unlock flow ships. Deliberately quotes no price:
+ * pricing is commercial and lives outside this repo (see CLAUDE.md, Rule 2).
+ * Like supportHtml(), this renders only when the caller opts in, so an
+ * auditor's client-facing deliverable never shows a marketing panel.
+ */
+const DEEPER_CHECKS = [
+  ['Alt-text quality', 'Whether the description conveys what the image actually communicates — not merely that an alt attribute exists.'],
+  ['Focus visibility', 'Tabs through the page and looks at each stop, catching focus rings too faint or too small to follow.'],
+  ['Text inside images', 'Finds words baked into graphics, where no screen reader or translation tool can reach them.'],
+  ['Colour-only signalling', 'Flags state shown by colour alone — an error in red with no icon, label, or text.'],
+  ['Reading order', 'Compares the visual order against the DOM order, where they disagree for someone using a screen reader.'],
+];
+
+function comingSoonHtml(show) {
+  if (!show) return '';
+  return `<section id="deeper">
+    <h2>Deeper analysis <span class="badge soon">Coming soon</span></h2>
+    <p class="lede">This report covers what can be measured automatically. These five checks need
+    judgment about what a page <em>means</em> — they are the part of WCAG a rules engine cannot
+    reach, and they are being built now.</p>
+    <div class="ghosts">
+      ${DEEPER_CHECKS.map(([title, why]) => `<div class="ghost">
+        <div class="ghost-head"><b>${esc(title)}</b><span class="lock" aria-hidden="true">🔒</span></div>
+        <p>${esc(why)}</p>
+        <div class="ghost-lines"><i></i><i></i><i></i></div>
+      </div>`).join('')}
+    </div>
+    <p class="finding-meta" style="margin-top:14px">Not yet available on any plan — nothing is
+    being withheld from you today.</p>
+  </section>`;
+}
+
+export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, funding = null, comingSoon = false } = {}) {
   const report = buildReport(db, runId, catalogue);
   const reportDir = dirname(path);
   const s = report.summary;
@@ -476,7 +546,7 @@ export function writeHtml(db, runId, path, catalogue = [], { supportUrl = null, 
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div class="brand"><span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 000 16z" fill="#141413"/></svg></span>Contrast</div>
+    <div class="brand"><span class="mark" data-state="idle"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle class="track" cx="12" cy="12" r="9"/><circle class="arc" cx="12" cy="12" r="9"/></svg></span>Contrast</div>
     <span class="eyebrow">Accessibility Audit Report</span>
     <h1>${esc(report.run.clientId)}</h1>
     <p class="seed">${esc(report.run.seedUrl)}</p>
@@ -527,7 +597,10 @@ ${report.reviewQueue.length ? `<section id="escalated">
   <div class="section-head"><span class="eyebrow">Nothing here was silently dropped</span><h2>Escalated to human review (${report.reviewQueue.length})</h2></div>
   <div class="table-wrap"><table><tr><th>Finding</th><th>Reason</th></tr>${report.reviewQueue.map((r) => `<tr><td><code>${esc(r.findingId)}</code></td><td>${esc(r.reason)}</td></tr>`).join('')}</table></div>
 </section>` : ''}
+${comingSoonHtml(comingSoon)}
 ${supportHtml(supportUrl, funding)}
+${comingSoon || supportUrl ? `<p class="colophon"><b>Contrast</b> — an accessibility auditing tool by <b>Vimoksh</b>.
+  Built to say what it checked, and what it could not.</p>` : ''}
 </main>
 <script>
 (function(){
